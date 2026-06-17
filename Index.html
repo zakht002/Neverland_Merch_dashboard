@@ -139,11 +139,24 @@ function loadTitleTab(title) {
   }).getBatchDetails(title);
 }
 
-// ✅ TITLE TABLE
+// ✅ TITLE TABLE RENDERER
 function renderTitleTable(data) {
-  const table = document.getElementById('title-table');
-  table.innerHTML = '';
+  const container = document.getElementById('title-table');
+  container.innerHTML = ''; // Clear previous
 
+  // 1. Render Top Header Section
+  const summaryDiv = document.createElement('div');
+  summaryDiv.style.marginBottom = '20px';
+  summaryDiv.innerHTML = `
+    <p><strong>Title:</strong> ${data.summary.fieldE || 'N/A'} | 
+       <strong>Field H:</strong> ${data.summary.fieldH || 'N/A'} | 
+       <strong>Field J:</strong> ${data.summary.fieldJ || 'N/A'} | 
+       <strong>Field AA:</strong> ${data.summary.fieldAA || 'N/A'}</p>
+  `;
+  container.appendChild(summaryDiv);
+
+  // 2. Render Table
+  const table = document.createElement('table');
   const trHead = document.createElement('tr');
   data.headers.forEach(h => {
     const th = document.createElement('th');
@@ -154,15 +167,15 @@ function renderTitleTable(data) {
 
   data.rows.forEach(row => {
     const tr = document.createElement('tr');
-
     row.forEach(cell => {
       const td = document.createElement('td');
       td.textContent = cell;
       tr.appendChild(td);
     });
-
     table.appendChild(tr);
   });
+  
+  container.appendChild(table);
 }
 
 // LOAD TABLES
@@ -180,13 +193,31 @@ function renderChart(data) {
   if (chartInstance) chartInstance.destroy();
 
   chartInstance = new Chart(document.getElementById('chart'), {
+    type: 'bar', // Base type
     data: {
       labels: data.titles,
       datasets: [
-        { type: 'bar', label: '7D Fact', data: data.fact7, backgroundColor: '#0f766e' },
-        { type: 'bar', label: '28D Fact', data: data.fact28, backgroundColor: '#22c1c3' },
-        { type: 'line', label: '28D Goal', data: data.goal28, borderColor: 'green' },
-        { type: 'line', label: 'Current % Reach', data: data.reach, borderColor: 'red' }
+        { label: '7D Fact', data: data.fact7, backgroundColor: '#3b82f6' }, // Blue bars
+        { label: '28D Fact', data: data.fact28, backgroundColor: '#8b5cf6' }, // Purple bars
+        { label: 'Current Fact', data: data.currentFact, backgroundColor: '#9ca3af' }, // Grey bars
+        { 
+          type: 'line', 
+          label: '7D Goal', 
+          data: data.goal7, 
+          borderColor: 'red', 
+          borderWidth: 2, 
+          tension: 0, // Flat lines
+          pointRadius: 0 
+        },
+        { 
+          type: 'line', 
+          label: '28D Goal', 
+          data: data.goal28, 
+          borderColor: 'green', 
+          borderWidth: 2, 
+          tension: 0, // Flat lines
+          pointRadius: 0 
+        }
       ]
     },
     options: {
@@ -196,9 +227,7 @@ function renderChart(data) {
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            callback: v => (v * 100).toFixed(2) + '%'
-          }
+          ticks: { callback: v => (v * 100).toFixed(0) + '%' }
         }
       }
     }
