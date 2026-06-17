@@ -2,348 +2,210 @@
 <html>
 <head>
   <base target="_top">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,700;1,300&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  
+
   <style>
-    :root {
-      --primary-navy: #1F4E79;
-      --slate-blue: #2F5597;
-      --light-bg: #F8F9FA;
-      --border-gray: #D9D9D9;
-      --text-main: #333333;
-      --text-muted: #595959;
-      --white: #FFFFFF;
-    }
+    body { font-family: Arial; padding: 20px; background: #f9fafb; }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Montserrat', sans-serif;
-      background-color: var(--light-bg);
-      color: var(--text-main);
-      padding: 24px;
-      line-height: 1.5;
-    }
-
-    header {
-      background-color: var(--primary-navy);
-      color: var(--white);
-      padding: 20px 32px;
-      border-radius: 8px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-
-    header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
-    header p { font-size: 13px; font-weight: 300; color: #D9E1F2; margin-top: 4px; }
-
-    .nav-container {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      border-bottom: 2px solid var(--border-gray);
-      padding-bottom: 2px;
-    }
+    .tabs { margin-bottom: 20px; }
 
     .tab-button {
-      background: none; border: none;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 14px; font-weight: 500; color: var(--text-muted);
-      padding: 10px 20px; cursor: pointer; border-radius: 4px 4px 0 0;
-      transition: all 0.2s ease;
+      padding: 8px 16px;
+      margin-right: 5px;
+      border: none;
+      background: #e5e7eb;
+      cursor: pointer;
     }
 
-    .tab-button:hover { background-color: rgba(47, 85, 151, 0.05); color: var(--slate-blue); }
-    .tab-button.active { color: var(--white); background-color: var(--slate-blue); }
-
-    .view-content { display: none; }
-    .view-content.active { display: block; }
-
-    .split-layout { display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; align-items: start; }
-
-    .card {
-      background-color: var(--white); border: 1px solid var(--border-gray);
-      border-radius: 8px; padding: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-      margin-bottom: 24px;
+    .tab-button.active {
+      background: #3b82f6;
+      color: white;
     }
 
-    .card h2 {
-      font-size: 18px; font-weight: 700; color: var(--primary-navy);
-      margin-bottom: 16px; border-bottom: 1px solid var(--border-gray); padding-bottom: 8px;
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 25px;
+      background: white;
     }
 
-    .artwork-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 16px; }
-
-    .artwork-item {
-      text-align: center; background: var(--light-bg);
-      padding: 8px; border-radius: 6px; border: 1px solid var(--border-gray);
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
     }
 
-    .artwork-item img { width: 100%; height: 160px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; }
-    .artwork-item p { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .metrics-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .metrics-table th, .metrics-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border-gray); }
-    .metrics-table th { background-color: #E2EFDA; color: var(--primary-navy); font-weight: 700; }
-
-    .filter-panel { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
-    .filter-panel select { padding: 6px 12px; font-family: 'Montserrat', sans-serif; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-gray); }
-
-    .action-btn {
-      background-color: var(--slate-blue); color: var(--white); border: none;
-      padding: 6px 12px; border-radius: 4px; font-family: 'Montserrat', sans-serif;
-      font-size: 12px; cursor: pointer; font-weight: 500;
-    }
-    .action-btn:hover { background-color: var(--primary-navy); }
-
-    .footnote { margin-top: 24px; font-size: 11px; color: var(--text-muted); border-top: 1px dashed var(--border-gray); padding-top: 12px; font-style: italic; }
-    .framework-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .matrix-box { border: 2px dashed var(--slate-blue); border-radius: 6px; padding: 16px; background-color: var(--white); }
-    .matrix-box h3 { font-size: 15px; color: var(--primary-navy); margin-bottom: 8px; }
-
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: center; z-index: 1000;
-    }
-    .modal-box { background: var(--white); padding: 24px; border-radius: 8px; max-width: 600px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .close-modal { cursor: pointer; font-weight: 700; color: var(--text-muted); }
+    th { background: #f3f4f6; }
   </style>
 </head>
+
 <body>
 
-  <header>
-    <h1>ITVX Structural Analytics Platform</h1>
-    <p>May 2026 Active Portfolio Performance & Strategy Mapping Board</p>
-  </header>
+<h2>Sheet Viewer</h2>
 
-  <div class="nav-container">
-    <button class="tab-button active" onclick="switchTab('tab1')">Current Batch & KPIs</button>
-    <button class="tab-button" onclick="switchTab('tab2')">Breakout Metrics</button>
-    <button class="tab-button" onclick="switchTab('tab3')">Premium Metrics</button>
-    <button class="tab-button" onclick="switchTab('tab4')">Standard Library</button>
-    <button class="tab-button" onclick="switchTab('tab5')">Framework Matrix Summary</button>
+<div class="tabs">
+  <button class="tab-button active" onclick="showTab('main', this)">Main</button>
+  <button class="tab-button" onclick="showTab('breakout', this)">Breakout</button>
+  <button class="tab-button" onclick="showTab('title', this)">Title</button>
+</div>
+
+<!-- MAIN -->
+<div id="main" class="tab-content active">
+  <h3>Current Sheet</h3>
+  <table id="main-table"></table>
+</div>
+
+<!-- BREAKOUT -->
+<div id="breakout" class="tab-content">
+  <h3>Breakout Hours</h3>
+  <table id="hours-table"></table>
+
+  <h3>Breakout % Reach</h3>
+  <table id="reach-table"></table>
+
+  <h3>Performance Chart</h3>
+  <div style="width:600px">
+    <canvas id="chart"></canvas>
   </div>
+</div>
 
-  <div id="tab1" class="view-content active">
-    <div class="split-layout">
-      <div class="card">
-        <h2>Active Title Portfolio</h2>
-        <div class="artwork-grid" id="artwork-container"></div>
-      </div>
-      
-      <div class="card">
-        <h2>Ranked Performance Metrics Ledger Matrix (Pivot Current)</h2>
-        <div style="overflow-x: auto;">
-          <table class="metrics-table" id="batch-metrics-table">
-            <thead>
-              <tr>
-                <th>Title Name</th>
-                <th>Category</th>
-                <th>% Reach ITD</th>
-                <th>Total Hrs ITD</th>
-                <th>Total Impressions</th>
-                <th>CTR / eCTR</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <div class="footnote" id="footnote-tab1"></div>
-  </div>
+<!-- ✅ NEW TITLE TAB -->
+<div id="title" class="tab-content">
+  <h3>Title Details</h3>
+  <table id="title-table"></table>
+</div>
 
-  <div id="tab2" class="view-content">
-    <div class="card">
-      <h2>Breakout Metrics & Boundary Targets Comparison Matrix</h2>
-      <div class="filter-panel">
-        <label>Selected View Layer: </label>
-        <select id="breakout-metric-select" onchange="renderCategoryCharts('Breakout')">
-          <option value="Hours">Total Volume (Streamed Hours)</option>
-          <option value="Reach">Proportional Platform Penetration (% Reach)</option>
-        </select>
-        <button class="action-btn" onclick="downloadRawCSV('Breakout')">Download Segment CSV</button>
-      </div>
-      <div style="position: relative; height:340px; width:100%;"><canvas id="breakoutChart"></canvas></div>
-    </div>
-    <div class="footnote" id="footnote-breakout"></div>
-  </div>
+<script>
 
-  <div id="tab3" class="view-content">
-    <div class="card">
-      <h2>Premium Tier Progression Target Analysis</h2>
-      <div class="filter-panel">
-        <label>Selected View Layer: </label>
-        <select id="premium-metric-select" onchange="renderCategoryCharts('Premium')">
-          <option value="Hours">Total Volume (Streamed Hours)</option>
-          <option value="Reach">Proportional Platform Penetration (% Reach)</option>
-        </select>
-        <button class="action-btn" onclick="downloadRawCSV('Premium')">Download Segment CSV</button>
-      </div>
-      <div style="position: relative; height:340px; width:100%;"><canvas id="premiumChart"></canvas></div>
-    </div>
-    <div class="footnote" id="footnote-premium"></div>
-  </div>
+// TAB SWITCH
+let chartLoaded = false;
 
-  <div id="tab4" class="view-content">
-    <div class="card">
-      <h2>Standard Library Content Mapping Contextual Baseline View</h2>
-      <div class="filter-panel">
-        <label>Selected View Layer: </label>
-        <select id="library-metric-select" onchange="renderCategoryCharts('Standard Library')">
-          <option value="Hours">Total Volume (Streamed Hours)</option>
-          <option value="Reach">Proportional Platform Penetration (% Reach)</option>
-        </select>
-        <button class="action-btn" onclick="downloadRawCSV('Standard Library')">Download Segment CSV</button>
-      </div>
-      <div style="position: relative; height:340px; width:100%;"><canvas id="libraryChart"></canvas></div>
-    </div>
-    <div class="footnote" id="footnote-library"></div>
-  </div>
+function showTab(tabId, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
 
-  <div id="tab5" class="view-content">
-    <div class="card">
-      <h2>Framework Matrix Strategy Landing Panel</h2>
-      <div class="framework-grid">
-        <div class="matrix-box">
-          <h3>🚀 Breakout Content Layer</h3>
-          <p style="font-size:12px; margin-top:6px;">7D Reach: > 0.40% | 28D: > 1.00%</p>
-          <p style="font-size:12px;">7D Volume: > 40k Hrs | 28D: > 115k Hrs</p>
-        </div>
-        <div class="matrix-box">
-          <h3>💎 Premium Content Tier</h3>
-          <p style="font-size:12px; margin-top:6px;">7D Reach: > 0.20% | 28D: > 0.50%</p>
-          <p style="font-size:12px;">7D Volume: > 15k Hrs | 28D: > 46k Hrs</p>
-        </div>
-        <div class="matrix-box">
-          <h3>📦 Standard Library Baseline</h3>
-          <p style="font-size:12px; margin-top:6px;">Monitored continuously without fixed targets.</p>
-          <p style="font-size:12px;">Plotted against Premium metrics to evaluate performance health.</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  document.getElementById(tabId).classList.add('active');
 
-  <div class="modal-overlay" id="trendModal">
-    <div class="modal-box">
-      <div class="modal-header">
-        <h3 id="modalTitle" style="font-family:'Montserrat'; font-weight:700; color:var(--primary-navy);">Trend Analysis View</h3>
-        <span class="close-modal" onclick="closeTrendModal()">&times;</span>
-      </div>
-      <p style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">Note: High-velocity data visualizations for this layer will be added to the G-Sheet in the next deployment milestone.</p>
-      <div style="position: relative; height:260px; width:100%;"><canvas id="trendChartCanvas"></canvas></div>
-    </div>
-  </div>
+  if (btn) btn.classList.add('active');
 
-  <script>
-    let rawDataset = null;
-    let metaConfig = null;
-    let activeCharts = {};
+  if (tabId === 'breakout' && !chartLoaded) {
+    google.script.run.withSuccessHandler(renderChart).getChartData();
+    chartLoaded = true;
+  }
+}
 
-    window.addEventListener('DOMContentLoaded', () => {
-      // Execute a single operational run on canvas load.
-      // Fresh metrics are generated live from your spreadsheet tabs each time the workspace is launched.
-      google.script.run.withSuccessHandler(metadata => {
-        metaConfig = metadata;
-        loadDashboardDataset();
-      }).getAppMetadata();
+// TABLE RENDER
+function renderTable(data, id) {
+  const table = document.getElementById(id);
+  table.innerHTML = '';
+
+  data.forEach((row, i) => {
+    const tr = document.createElement('tr');
+
+    row.forEach((cell, colIndex) => {
+      const el = document.createElement(i === 0 ? 'th' : 'td');
+
+      // ✅ clickable titles (Main only)
+      if (id === 'main-table' && i > 0 && colIndex === 0) {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.textContent = cell;
+
+        a.onclick = function () {
+          loadTitleTab(cell);
+          return false;
+        };
+
+        el.appendChild(a);
+      } else {
+        el.textContent = cell || '';
+      }
+
+      tr.appendChild(el);
     });
 
-    function loadDashboardDataset() {
-      google.script.run.withSuccessHandler(data => {
-        rawDataset = data;
-        populateTab1Framework();
-        renderCategoryCharts('Breakout');
-        renderCategoryCharts('Premium');
-        renderCategoryCharts('Standard Library');
-      }).fetchDashboardData();
-    }
+    table.appendChild(tr);
+  });
+}
 
-    function switchTab(tabId) {
-      document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-      document.getElementById(tabId).classList.add('active');
-      
-      const idxMap = { 'tab1': 0, 'tab2': 1, 'tab3': 2, 'tab4': 3, 'tab5': 4 };
-      document.querySelectorAll('.tab-button')[idxMap[tabId]].classList.add('active');
-    }
+// ✅ LOAD TITLE TAB DATA
+function loadTitleTab(title) {
+  showTab('title', document.querySelector('[onclick*="title"]'));
 
-    function populateTab1Framework() {
-      if(!rawDataset) return;
-      const artContainer = document.getElementById('artwork-container');
-      const tableBody = document.getElementById('batch-metrics-table').querySelector('tbody');
-      
-      artContainer.innerHTML = ''; tableBody.innerHTML = '';
-      
-      const sortedBatch = [...rawDataset.currentBatch].sort((a, b) => b.reachItd - a.reachItd);
-      
-      sortedBatch.forEach(item => {
-        const artItem = document.createElement('div');
-        artItem.className = 'artwork-item';
-        artItem.innerHTML = `
-          <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&q=80" alt="${item.title}">
-          <p title="${item.title}">${item.title}</p>
-        `;
-        artContainer.appendChild(artItem);
-        
-        const tr = document.createElement('tr');
-        const urlEncodedTitle = encodeURIComponent(item.title).replace(/%20/g, '+');
-        const embeddedLookerUrl = `${metaConfig.lookerBaseUrl}?Element+Title=${urlEncodedTitle}&Ds+Date=after+2025%2F07%2F25&Country=${metaConfig.defaultCountry}`;
-        
-        tr.innerHTML = `
-          <td><a href="${embeddedLookerUrl}" target="_blank" style="color:var(--slate-blue); font-weight:500; text-decoration:none;">${item.title} ↗</a></td>
-          <td>${item.category}</td>
-          <td>${(item.reachItd * 100).toFixed(2)}%</td>
-          <td>${item.totalHrsItd.toLocaleString()} hrs</td>
-          <td>${item.totalImpressions.toLocaleString()}</td>
-          <td>${item.ctr.toFixed(1)}% / ${item.ectr.toFixed(1)}%</td>
-        `;
-        tableBody.appendChild(tr);
-      });
-      
-      document.getElementById('footnote-tab1').innerText = rawDataset.footers.Tab1;
-      document.getElementById('footnote-breakout').innerText = rawDataset.footers.CategoryViews;
-      document.getElementById('footnote-premium').innerText = rawDataset.footers.CategoryViews;
-      document.getElementById('footnote-library').innerText = rawDataset.footers.CategoryViews;
-    }
+  google.script.run.withSuccessHandler(function(data) {
+    renderTitleTable(data);
+  }).getBatchDetails(title);
+}
 
-    function renderCategoryCharts(categoryKey) {
-      if(!rawDataset) return;
-      let canvasId, selectId;
-      if(categoryKey === 'Breakout') { canvasId = 'breakoutChart'; selectId = 'breakout-metric-select'; }
-      if(categoryKey === 'Premium') { canvasId = 'premiumChart'; selectId = 'premium-metric-select'; }
-      if(categoryKey === 'Standard Library') { canvasId = 'libraryChart'; selectId = 'library-metric-select'; }
-      
-      const metricType = document.getElementById(selectId).value;
-      const filteredRecords = rawDataset.categoryPerformance[categoryKey].filter(r => r.metricType === metricType);
-      
-      const titles = filteredRecords.map(r => r.title);
-      const data7d = filteredRecords.map(r => r.val7d);
-      const data28d = filteredRecords.map(r => r.val28d);
-      const dataItd = filteredRecords.map(r => r.valItd);
-      const target28dLine = filteredRecords.map(r => r.target28d);
-      
-      if(activeCharts[canvasId]) { activeCharts[canvasId].destroy(); }
-      
-      const ctx = document.getElementById(canvasId).getContext('2d');
-      activeCharts[canvasId] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: titles,
-          datasets: [
-            { label: '7D Trajectory Volume', backgroundColor: '#B4C6E7', data: data7d },
-            { label: '28D Operational Volume', backgroundColor: '#8EA9DB', data: data28d },
-            { label: 'Current ITD Cumulative Fact', backgroundColor: '#2F5597', data: dataItd },
-            { 
-              label: 'Strategic Framework 28D Target Threshold Line', data: target28dLine, 
-              type: 'line', borderColor: '#FF0000', borderDash: [6, 4], fill: false, pointRadius: 4 
-            }
-          ]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: {
+// ✅ TITLE TABLE
+function renderTitleTable(data) {
+  const table = document.getElementById('title-table');
+  table.innerHTML = '';
+
+  const trHead = document.createElement('tr');
+  data.headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    trHead.appendChild(th);
+  });
+  table.appendChild(trHead);
+
+  data.rows.forEach(row => {
+    const tr = document.createElement('tr');
+
+    row.forEach(cell => {
+      const td = document.createElement('td');
+      td.textContent = cell;
+      tr.appendChild(td);
+    });
+
+    table.appendChild(tr);
+  });
+}
+
+// LOAD TABLES
+google.script.run.withSuccessHandler(d => renderTable(d, 'main-table')).getSheetData();
+
+google.script.run.withSuccessHandler(d => {
+  renderTable(d.hours, 'hours-table');
+  renderTable(d.reach, 'reach-table');
+}).getBreakoutData();
+
+// CHART
+let chartInstance;
+
+function renderChart(data) {
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(document.getElementById('chart'), {
+    data: {
+      labels: data.titles,
+      datasets: [
+        { type: 'bar', label: '7D Fact', data: data.fact7, backgroundColor: '#0f766e' },
+        { type: 'bar', label: '28D Fact', data: data.fact28, backgroundColor: '#22c1c3' },
+        { type: 'line', label: '28D Goal', data: data.goal28, borderColor: 'green' },
+        { type: 'line', label: 'Current % Reach', data: data.reach, borderColor: 'red' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => (v * 100).toFixed(2) + '%'
+          }
+        }
+      }
+    }
+  });
+}
+
+</script>
+
+</body>
+</html>
