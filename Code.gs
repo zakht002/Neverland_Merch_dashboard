@@ -28,49 +28,64 @@ function getChartData() {
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID)
     .getSheetByName('Breakout % Reach');
 
-  // ✅ Only pull required range
-  const data = sheet.getRange('F40:K44').getDisplayValues();
-
+  // Assuming headers are in row 40, data starts in 41
+  const data = sheet.getRange('F40:K44').getDisplayValues(); 
   const headers = data[0];
 
-  const titleCol = headers.indexOf('Title');
-  const fact7Col = headers.indexOf('7D Fact');
-  const fact28Col = headers.indexOf('28D Fact');
-  const goal7Col = headers.indexOf('7D Goal');
-  const goal28Col = headers.indexOf('28D Goal');
-  const reachCol = headers.indexOf('Current % reach');
+  const titleCol = headers.indexOf('Title'); // F
+  const fact7Col = headers.indexOf('7D Fact'); // G
+  const fact28Col = headers.indexOf('28D Fact'); // H
+  const goal7Col = headers.indexOf('7D Goal'); // I
+  const goal28Col = headers.indexOf('28D Goal'); // J
+  const currentFactCol = headers.indexOf('Current % reach'); // K
 
-  const titles = [];
-  const fact7 = [];
-  const fact28 = [];
-  const reach = [];
-  const goal28 = [];
+  const titles = [], fact7 = [], fact28 = [], currentFact = [], goal7 = [], goal28 = [];
 
   function parsePercent(v) {
     if (!v) return 0;
-
     const str = v.toString().trim();
-
-    if (str.includes('%')) {
-      return parseFloat(str.replace('%', '')) / 100;
-    }
-
+    if (str.includes('%')) return parseFloat(str.replace('%', '')) / 100;
     const num = parseFloat(str);
     return isNaN(num) ? 0 : num;
   }
 
-  // ✅ LOOP FIXED (< instead of &lt;)
   for (let i = 1; i < data.length; i++) {
-
-    if (!data[i][titleCol]) continue; // skip empty rows
-
+    if (!data[i][titleCol]) continue;
     titles.push(data[i][titleCol]);
-
     fact7.push(parsePercent(data[i][fact7Col]));
     fact28.push(parsePercent(data[i][fact28Col]));
-    reach.push(parsePercent(data[i][reachCol]));
+    goal7.push(parsePercent(data[i][goal7Col]));
     goal28.push(parsePercent(data[i][goal28Col]));
+    currentFact.push(parsePercent(data[i][currentFactCol]));
   }
 
-  return { titles, fact7, fact28, reach, goal28 };
+  return { titles, fact7, fact28, goal7, goal28, currentFact };
+}
+
+// TITLE MERCH DATA
+function getBatchDetails(title) {
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Batch Container Merch');
+  const data = sheet.getDataRange().getDisplayValues();
+  const headers = data[0];
+  
+  // Filter by Column E (index 4)
+  const rows = data.slice(1).filter(row => row[4] === title);
+  
+  // Get header info from first matching row
+  const headerInfo = rows.length > 0 ? {
+    fieldE: rows[0][4],
+    fieldH: rows[0][7],
+    fieldJ: rows[0][9],
+    fieldAA: rows[0][26]
+  } : {};
+
+  // Map data and sort by Column Y (index 24) Descending
+  const tableData = rows.map(r => [r[4], r[21], r[22], r[23], r[24], r[25]])
+                        .sort((a, b) => parseFloat(b[4]) - parseFloat(a[4]));
+
+  return {
+    headers: ['Title', 'CONTAINER_TITLE', 'IMPRESSION_BEHAVIOUR_EDITORIAL', 'IMPRESSION_BEHAVIOUR_PERSONALISATION', 'IMPRESSIONS', 'PLAYS'],
+    rows: tableData,
+    summary: headerInfo
+  };
 }
