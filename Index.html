@@ -2,239 +2,145 @@
 <html>
 <head>
   <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  
   <style>
-    body { font-family: Arial; padding: 20px; background: #f9fafb; }
-
-    .tabs { margin-bottom: 20px; }
-
-    .tab-button {
-      padding: 8px 16px;
-      margin-right: 5px;
-      border: none;
-      background: #e5e7eb;
-      cursor: pointer;
+    :root { 
+      --bg-main: #06131c; 
+      --bg-card: #0d1f2d; 
+      --aurora: #00e5ff; 
+      --text: #ffffff;
+      --grey: #808080;
     }
-
-    .tab-button.active {
-      background: #3b82f6;
-      color: white;
-    }
-
-    .tab-content { display: none; }
+    body { font-family: 'Montserrat', sans-serif; background: var(--bg-main); color: var(--text); padding: 30px; margin: 0; }
+    h2 { font-weight: 600; margin-bottom: 25px; }
+    
+    .tabs { margin-bottom: 30px; display: flex; gap: 20px; border-bottom: 1px solid #134e5e; padding-bottom: 10px; }
+    .tab-button { padding: 8px 16px; border: none; cursor: pointer; background: transparent; color: var(--grey); font-family: inherit; font-size: 14px; transition: 0.3s; }
+    .tab-button.active { color: var(--aurora); font-weight: 600; }
+    
+    .tab-content { display: none; } 
     .tab-content.active { display: block; }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-bottom: 25px;
-      background: white;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-    }
-
-    th { background: #f3f4f6; }
+    
+    .dashboard-card { background: var(--bg-card); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #134e5e; }
+    .chart-container { height: 300px; width: 100%; position: relative; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th { color: var(--aurora); text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; }
+    td { padding: 12px; border-bottom: 1px solid #134e5e; font-size: 14px; }
+    td a { color: var(--aurora); text-decoration: none; font-weight: 600; }
+    
+    #title-summary-target { margin-bottom: 15px; font-weight: 600; color: var(--aurora); }
   </style>
 </head>
-
 <body>
 
-<h2>Sheet Viewer</h2>
+  <h2>Dashboard</h2>
 
-<div class="tabs">
-  <button class="tab-button active" onclick="showTab('main', this)">Main</button>
-  <button class="tab-button" onclick="showTab('breakout', this)">Breakout</button>
-  <button class="tab-button" onclick="showTab('title', this)">Title</button>
-</div>
-
-<!-- MAIN -->
-<div id="main" class="tab-content active">
-  <h3>Current Sheet</h3>
-  <table id="main-table"></table>
-</div>
-
-<!-- BREAKOUT -->
-<div id="breakout" class="tab-content">
-  <h3>Breakout Hours</h3>
-  <table id="hours-table"></table>
-
-  <h3>Breakout % Reach</h3>
-  <table id="reach-table"></table>
-
-  <h3>Performance Chart</h3>
-  <div style="width:600px">
-    <canvas id="chart"></canvas>
+  <div class="tabs">
+    <button class="tab-button active" onclick="showTab('main', this)">Main</button>
+    <button class="tab-button" onclick="showTab('breakout', this)">Breakout</button>
+    <button class="tab-button" onclick="showTab('title', this)">Title</button>
   </div>
-</div>
 
-<!-- ✅ NEW TITLE TAB -->
-<div id="title" class="tab-content">
-  <h3>Title Details</h3>
-  <table id="title-table"></table>
-</div>
+  <div id="main" class="tab-content active">
+    <div class="dashboard-card"><table id="main-table"></table></div>
+  </div>
 
-<script>
+  <div id="breakout" class="tab-content">
+    <div class="dashboard-card">
+      <h3>% Reach Performance</h3>
+      <div class="chart-container"><canvas id="chart-reach"></canvas></div>
+    </div>
+    <div class="dashboard-card">
+      <h3>Hours Streamed Performance</h3>
+      <div class="chart-container"><canvas id="chart-hours"></canvas></div>
+    </div>
+  </div>
 
-// TAB SWITCH
-let chartLoaded = false;
+  <div id="title" class="tab-content">
+    <div class="dashboard-card">
+      <div id="title-summary-target"></div>
+      <table id="title-table"></table>
+    </div>
+  </div>
 
-function showTab(tabId, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+  <script>
+    let chartLoaded = false;
+    
+    function showTab(id, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if(btn) btn.classList.add('active');
 
-  document.getElementById(tabId).classList.add('active');
-
-  if (btn) btn.classList.add('active');
-
-  if (tabId === 'breakout' && !chartLoaded) {
-    google.script.run.withSuccessHandler(renderChart).getChartData();
-    chartLoaded = true;
-  }
-}
-
-// TABLE RENDER
-function renderTable(data, id) {
-  const table = document.getElementById(id);
-  table.innerHTML = '';
-
-  data.forEach((row, i) => {
-    const tr = document.createElement('tr');
-
-    row.forEach((cell, colIndex) => {
-      const el = document.createElement(i === 0 ? 'th' : 'td');
-
-      // ✅ clickable titles (Main only)
-      if (id === 'main-table' && i > 0 && colIndex === 0) {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.textContent = cell;
-
-        a.onclick = function () {
-          loadTitleTab(cell);
-          return false;
-        };
-
-        el.appendChild(a);
-      } else {
-        el.textContent = cell || '';
-      }
-
-      tr.appendChild(el);
-    });
-
-    table.appendChild(tr);
-  });
-}
-
-// ✅ LOAD TITLE TAB DATA
-function loadTitleTab(title) {
-  showTab('title', document.querySelector('[onclick*="title"]'));
-
-  google.script.run.withSuccessHandler(function(data) {
-    renderTitleTable(data);
-  }).getBatchDetails(title);
-}
-
-// ✅ TITLE TABLE RENDERER
-function renderTitleTable(data) {
-  const container = document.getElementById('title-table');
-  container.innerHTML = ''; // Clear previous
-
-  // 1. Render Top Header Section
-  const summaryDiv = document.createElement('div');
-  summaryDiv.style.marginBottom = '20px';
-  summaryDiv.innerHTML = `
-    <p><strong>Title:</strong> ${data.summary.fieldE || 'N/A'} | 
-       <strong>Field H:</strong> ${data.summary.fieldH || 'N/A'} | 
-       <strong>Field J:</strong> ${data.summary.fieldJ || 'N/A'} | 
-       <strong>Field AA:</strong> ${data.summary.fieldAA || 'N/A'}</p>
-  `;
-  container.appendChild(summaryDiv);
-
-  // 2. Render Table
-  const table = document.createElement('table');
-  const trHead = document.createElement('tr');
-  data.headers.forEach(h => {
-    const th = document.createElement('th');
-    th.textContent = h;
-    trHead.appendChild(th);
-  });
-  table.appendChild(trHead);
-
-  data.rows.forEach(row => {
-    const tr = document.createElement('tr');
-    row.forEach(cell => {
-      const td = document.createElement('td');
-      td.textContent = cell;
-      tr.appendChild(td);
-    });
-    table.appendChild(tr);
-  });
-  
-  container.appendChild(table);
-}
-
-// LOAD TABLES
-google.script.run.withSuccessHandler(d => renderTable(d, 'main-table')).getSheetData();
-
-google.script.run.withSuccessHandler(d => {
-  renderTable(d.hours, 'hours-table');
-  renderTable(d.reach, 'reach-table');
-}).getBreakoutData();
-
-// CHART
-let chartInstance;
-
-function renderChart(data) {
-  if (chartInstance) chartInstance.destroy();
-
-  chartInstance = new Chart(document.getElementById('chart'), {
-    type: 'bar', // Base type
-    data: {
-      labels: data.titles,
-      datasets: [
-        { label: '7D Fact', data: data.fact7, backgroundColor: '#3b82f6' }, // Blue bars
-        { label: '28D Fact', data: data.fact28, backgroundColor: '#8b5cf6' }, // Purple bars
-        { label: 'Current Fact', data: data.currentFact, backgroundColor: '#9ca3af' }, // Grey bars
-        { 
-          type: 'line', 
-          label: '7D Goal', 
-          data: data.goal7, 
-          borderColor: 'red', 
-          borderWidth: 2, 
-          tension: 0, // Flat lines
-          pointRadius: 0 
-        },
-        { 
-          type: 'line', 
-          label: '28D Goal', 
-          data: data.goal28, 
-          borderColor: 'green', 
-          borderWidth: 2, 
-          tension: 0, // Flat lines
-          pointRadius: 0 
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom' } },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { callback: v => (v * 100).toFixed(0) + '%' }
-        }
+      if(id === 'breakout' && !chartLoaded) {
+        google.script.run.withSuccessHandler(d => {
+          renderChart('chart-reach', d.reach, true);
+          renderChart('chart-hours', d.hours, false);
+        }).getBreakoutChartData();
+        chartLoaded = true;
       }
     }
-  });
-}
 
-</script>
+    function renderChart(id, data, isPercent) {
+      const ctx = document.getElementById(id).getContext('2d');
+      new Chart(ctx, {
+        plugins: [ChartDataLabels],
+        data: { labels: data.titles, datasets: [
+          { type: 'bar', label: '7D Fact', data: data.fact7, backgroundColor: '#00d2ff' },
+          { type: 'bar', label: '28D Fact', data: data.fact28, backgroundColor: '#134e5e' },
+          { type: 'bar', label: 'Current Fact', data: data.currentFact, backgroundColor: '#808080' },
+          { type: 'line', label: '7D Goal', data: data.goal7, borderColor: '#ff7675', pointRadius: 0 },
+          { type: 'line', label: '28D Goal', data: data.goal28, borderColor: '#1dd1a1', pointRadius: 0 }
+        ]},
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { 
+            legend: { position: 'bottom', labels: { color: '#ffffff' } },
+            datalabels: { 
+              color: '#fff', anchor: 'end', align: 'top', font: { size: 10 },
+              formatter: v => isPercent ? (v * 100).toFixed(1) + '%' : v 
+            }
+          },
+          scales: { 
+            y: { beginAtZero: true, ticks: { color: '#ffffff', callback: v => isPercent ? (v * 100).toFixed(1) + '%' : v } },
+            x: { ticks: { color: '#ffffff' } }
+          }
+        }
+      });
+    }
 
+    function renderTable(data, id) { 
+      const table = document.getElementById(id);
+      table.innerHTML = '';
+      data.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell, ci) => {
+          const el = document.createElement(i == 0 ? 'th' : 'td');
+          if(id === 'main-table' && i > 0 && ci === 0) {
+            const a = document.createElement('a'); a.textContent = cell; a.href='#';
+            a.onclick = () => { loadTitleTab(cell); return false; };
+            el.appendChild(a);
+          } else { el.textContent = cell; }
+          tr.appendChild(el);
+        });
+        table.appendChild(tr);
+      });
+    }
+    
+    function loadTitleTab(title) {
+      showTab('title', document.querySelector('[onclick*="title"]'));
+      google.script.run.withSuccessHandler(d => {
+        renderTable([d.headers, ...d.rows], 'title-table');
+        document.getElementById('title-summary-target').textContent = 'Title: ' + d.summary.fieldE;
+      }).getBatchDetails(title);
+    }
+
+    // Initial Load
+    google.script.run.withSuccessHandler(d => renderTable(d, 'main-table')).getSheetData();
+  </script>
 </body>
 </html>
