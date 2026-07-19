@@ -2,8 +2,17 @@ const SPREADSHEET_ID = '1Y2hMSDU9BTlk_nHwvxWL5KmGQMA5QnD3x0et-gebdko';
 const EXTERNAL_SPREADSHEET_ID = '1KkGtDYCrXDBX4WTC5i9iwsKCBq6NeKUauwiGQ-C4Nb4';
 
 function doGet() {
+  // AUTOMATIC REFRESH LAYER: Forces Google Sheets to flush caches and evaluate latest formula changes upon opening
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const ssExt = SpreadsheetApp.openById(EXTERNAL_SPREADSHEET_ID);
+    SpreadsheetApp.flush(); // Forces a live background calculation check
+  } catch(e) {
+    Logger.log("Automatic recalculation flush skipped or sheet unreachable: " + e.message);
+  }
+
   return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Sheet Viewer');
+    .setTitle('ITVX Content Merchandising Report'); 
 }
 
 // ===== DOWNLOAD RAW DATA FOR ANY TABLE =====
@@ -157,10 +166,6 @@ function getTitleVisualData(title) {
   }));
 }
 
-// ========================================================
-// ========== NEW FUNCTIONS FOR TARGET EXTENSIONS =========
-// ========================================================
-
 function getMonthlyEngagementData() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Monthly Engagement');
@@ -277,4 +282,113 @@ function getCleanPerformanceData() {
   
   const top20 = dataRows.slice(0, 20);
   return [headers].concat(top20);
+}
+
+function getTitleTrajectoryData(selectedTitle) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  const currentSheet = ss.getSheetByName('Current');
+  const currentData = currentSheet.getDataRange().getDisplayValues();
+  const curHeaders = currentData[0];
+  const titleIdx = curHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const catIdx = curHeaders.indexOf('title_reach_category');
+  
+  let titleCategory = "Library Content"; 
+  if (titleIdx > -1 && catIdx > -1) {
+    for(let r=1; r<currentData.length; r++) {
+      if(currentData[r][titleIdx] === selectedTitle) {
+        titleCategory = currentData[r][catIdx];
+        break;
+      }
+    }
+  }
+  
+  let target7D = 0.002;  
+  let target28D = 0.005;
+  if (titleCategory === "Breakout Content") {
+    target7D = 0.004;  
+    target28D = 0.01;   
+  }
+  
+  const rawSheet = ss.getSheetByName('Daily % Reach (Raw)');
+  const rawData = rawSheet.getDataRange().getDisplayValues();
+  const rawHeaders = rawData[0];
+  
+  const bIdx = rawHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const eIdx = rawHeaders.indexOf('DAY_INTERVAL');
+  const fIdx = rawHeaders.indexOf('DAILY_ITD_REACH');
+  
+  let parsedPoints = [];
+  for(let i=1; i<rawData.length; i++) {
+    if(rawData[i][bIdx] === selectedTitle) {
+      let interval = parseInt(rawData[i][eIdx]) || 0;
+      let reachStr = rawData[i][fIdx].toString().trim();
+      let reachFact = null;
+      
+      if(reachStr !== "" && reachStr !== "-") {
+        reachFact = reachStr.includes('%') ? parseFloat(reachStr.replace('%',''))/100 : parseFloat(reachStr);
+        if(isNaN(reachFact)) reachFact = null;
+      }
+      
+      parsedPoints.push({
+        day: interval,
+        fact: reachFact
+      });
+    }
+  }
+  
+  parsedPoints.sort((a,b) => a.day - b.day);
+  
+  let finalTrajectoryArr = [];
+  let lastKnownTrajectory = 0;
+  let currentActualRate = 0;
+  
+  for(let day = 1; day <= 28; day++) {
+    let match = parsedPoints.find(p => p.day === day);
+    let factVal = (match && match.fact !== null) ? match.fact : null;
+    let computedTrajectory = 0;
+    
+    if (factVal !== null) {
+      computedTrajectory = factVal;
+      currentActualRate = factVal; 
+    } else {
+      let remainingDays = 28 - (day - 1);
+      if (remainingDays <= 0) remainingDays = 1;
+      computedTrajectory = lastKnownTrajectory + ((target28D - lastKnownTrajectory) / remainingDays);
+    }
+    
+    lastKnownTrajectory = computedTrajectory;
+    finalTrajectoryArr.push({
+      day: day,
+      trajectoryValue: computedTrajectory,
+      isFact: (factVal !== null)
+    });
+  }
+  
+  let daysElapsed = finalTrajectoryArr.filter(p => p.isFact).length;
+  let remainingTime = 28 - daysElapsed;
+  let targetShortfall = target28D - currentActualRate;
+  let neededDailyUplift = remainingTime > 0 ? (targetShortfall / remainingTime) : 0;
+  
+  let currentVelocity = 0;
+  if(daysElapsed > 1) {
+     currentVelocity = currentActualRate / daysElapsed;
+  }
+  
+  let statusComment = "On Target";
+  if(currentVelocity < (target28D / 28) && targetShortfall > 0) {
+    statusComment = "Below Target";
+  }
+  
+  return {
+    title: selectedTitle,
+    category: titleCategory,
+    target7D: target7D,
+    target28D: target28D,
+    daysElapsed: daysElapsed,
+    currentRate: currentActualRate,
+    neededDailyRate: neededDailyUplift,
+    status: statusComment,
+    chartData: finalTrajectoryArr
+  };
 }
