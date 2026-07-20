@@ -295,6 +295,7 @@
     let localCacheMerchDatasetPrimary = null;
     let localCacheMerchDatasetComparison = null;
     let localCacheTrajectoryDataPayload = null;
+    let localCacheReachTrajectoryDataPayload = null;
 
     window.onload = function() {
       executeMainBatchSortStream();
@@ -474,7 +475,6 @@
       btn.classList.add('active');
     }
 
-    // Explicitly updated to support Trajectory layout metrics parameters format mapping rules
     function showTitleSubTab(id, btn) { 
       const container = document.getElementById('title'); 
       container.querySelectorAll('.sub-tab-content').forEach(t => t.classList.remove('active')); 
@@ -550,9 +550,6 @@
       document.getElementById('label-chart-3').textContent = pTitle + " - Impressions Curation Mix";
       document.getElementById('label-chart-4').textContent = pTitle + " - Plays Curation Mix";
 
-      // ----------------------------------------------------
-      // AUTOMATIC EXEC SUMMARY & ADDITIONAL KPI CALCULATION
-      // ----------------------------------------------------
       let totalPImps = Object.values(primary.impressionsByContainer || {}).reduce((a,b)=>a+b, 0) || 0;
       let totalPPlays = Object.values(primary.playsByContainer || {}).reduce((a,b)=>a+b, 0) || 0;
       let convRate = totalPImps > 0 ? ((totalPPlays / totalPImps) * 100).toFixed(2) + "%" : "0.00%";
@@ -677,11 +674,9 @@
     }
 
     function refreshTimelineTrendsSubsystem() {
-      // Direct pipeline redirect link interface trigger setup 
       refreshCompetitiveEvolutionCurveEngine();
     }
 
-    // ===== RE-ENGINEERED COMPACT METHOD: STREAMLINED EVOLUTION TREND CURVES PLOTTER =====
     function refreshCompetitiveEvolutionCurveEngine() {
       const primaryPlainTitle = activeRawPlainTitleString;
       if(!primaryPlainTitle) return;
@@ -707,7 +702,7 @@
           chartDatasets.push({
             label: labelWithDays,
             data: linePoints,
-            borderColor: isPrimary ? '#008080' : '#00e5ff', // ITVX Teal for Primary, Aurora for secondary additions
+            borderColor: isPrimary ? '#008080' : '#00e5ff',
             borderWidth: isPrimary ? 2.5 : 1.5,
             fill: false,
             pointRadius: 3
@@ -760,35 +755,37 @@
     }
 
     function renderTrajectoryEngineCharts(title) {
-      google.script.run.withSuccessHandler(d => {
-        localCacheTrajectoryDataPayload = d;
+      // 1. Fetch data from your new Reach Trajectory function
+      google.script.run.withSuccessHandler(dReach => {
+        localCacheReachTrajectoryDataPayload = dReach;
+        
         const summaryElement = document.getElementById('trajectory-analysis-summary');
-        let reachFmtVal = (d.currentRate * 100).toFixed(1) + "%";
+        let reachFmtVal = (dReach.currentReachRate * 100).toFixed(1) + "%";
 
         summaryElement.innerHTML = `
-          Category Tier Classification: ${d.category} | Current Operational Track Status: <span style="color:${d.status === 'On Target' ? '#1dd1a1':'#ff7675'}">${d.status.toUpperCase()}</span><br/>
-          Historical benchmark cumulative index is tracking at <strong>${reachFmtVal}</strong> towards its Day 28 objective target of <strong>${(d.target28D * 100).toFixed(1)}%</strong>.<br/>
-          To secure full parameter alignment over the remaining lifecycle run, this product requires an estimated daily conversion vector velocity of <strong>${(d.neededDailyRate * 100).toFixed(3)}%</strong>.
+          Category Tier Classification: ${dReach.category} | Current Operational Track Status: <span style="color:${dReach.status === 'On Target' ? '#1dd1a1':'#ff7675'}">${dReach.status.toUpperCase()}</span><br/>
+          Historical benchmark cumulative index is tracking at <strong>${reachFmtVal}</strong> towards its Day 28 objective target of <strong>${(dReach.target28D * 100).toFixed(1)}%</strong>.<br/>
+          To secure full parameter alignment over the remaining lifecycle run, this product requires an estimated daily conversion vector velocity of <strong>${(dReach.neededDailyRate * 100).toFixed(3)}%</strong>.
         `;
 
-        const dayLabels = d.chartData.map(pt => pt.day);
-        const staticLine7D = new Array(28).fill(d.target7D);
-        const staticLine28D = new Array(28).fill(d.target28D);
+        const dayLabels = dReach.chartReachData.map(pt => pt.day);
+        const staticLine7D = new Array(28).fill(dReach.target7D);
+        const staticLine28D = new Array(28).fill(dReach.target28D);
         const pctFmt = (v) => (v * 100).toFixed(2) + '%';
 
-        let primarySolidPoints = [];
-        let primaryDottedPoints = [];
+        let reachSolidPoints = [];
+        let reachDottedPoints = [];
 
-        d.chartData.forEach((pt, i) => {
+        dReach.chartReachData.forEach((pt, i) => {
           if (pt.isFact) {
-            primarySolidPoints.push(pt.trajectoryValue);
-            primaryDottedPoints.push(null);
+            reachSolidPoints.push(pt.trajectoryValue);
+            reachDottedPoints.push(null);
           } else {
-            if (i > 0 && d.chartData[i-1].isFact) {
-              primaryDottedPoints[i-1] = d.chartData[i-1].trajectoryValue;
+            if (i > 0 && dReach.chartReachData[i-1].isFact) {
+              reachDottedPoints[i-1] = dReach.chartReachData[i-1].trajectoryValue;
             }
-            primarySolidPoints.push(null);
-            primaryDottedPoints.push(pt.trajectoryValue);
+            reachSolidPoints.push(null);
+            reachDottedPoints.push(pt.trajectoryValue);
           }
         });
 
@@ -798,8 +795,8 @@
           data: {
             labels: dayLabels,
             datasets: [
-              { label: 'Actual Solid Trajectory (Factual Data Points)', data: primarySolidPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
-              { label: 'Forecasted Dotted Segment', data: primaryDottedPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 1, borderDash: [4, 4], fill: false },
+              { label: 'Actual Solid Trajectory (Factual Data Points)', data: reachSolidPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: 'Forecasted Dotted Segment', data: reachDottedPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 1, borderDash: [4, 4], fill: false },
               { label: '7-Day Target Line', data: staticLine7D, borderColor: '#ff7675', borderDash: [5, 5], pointRadius: 0, fill: false },
               { label: '28-Day Target Line', data: staticLine28D, borderColor: '#1dd1a1', borderDash: [5, 5], pointRadius: 0, fill: false }
             ]
@@ -810,24 +807,30 @@
             scales: { y: { ticks: { color: '#fff', callback: pctFmt }, grid: { color: 'rgba(19, 78, 94, 0.1)' } }, x: { ticks: { color: '#fff' }, grid: { color: 'rgba(19, 78, 94, 0.1)' } } }
           }
         });
+      }).getTitleReachTrajectoryData(title);
 
+      // 2. Keep Hours Trajectory pipeline tied to original baseline method parameters
+      google.script.run.withSuccessHandler(dHours => {
+        localCacheTrajectoryDataPayload = dHours;
+        const dayLabels = dHours.chartHrsData.map(pt => pt.day);
+        
         let hoursSolidPoints = [];
         let hoursDottedPoints = [];
-        d.chartHrsData.forEach((pt, i) => {
+        dHours.chartHrsData.forEach((pt, i) => {
           if (pt.isFact) {
             hoursSolidPoints.push(pt.trajectoryValue);
             hoursDottedPoints.push(null);
           } else {
-            if (i > 0 && d.chartHrsData[i-1].isFact) {
-              hoursDottedPoints[i-1] = d.chartHrsData[i-1].trajectoryValue;
+            if (i > 0 && dHours.chartHrsData[i-1].isFact) {
+              hoursDottedPoints[i-1] = dHours.chartHrsData[i-1].trajectoryValue;
             }
             hoursSolidPoints.push(null);
             hoursDottedPoints.push(pt.trajectoryValue);
           }
         });
 
-        const lineHrs7D = new Array(28).fill(d.targetHrs7D);
-        const lineHrs28D = new Array(28).fill(d.target28D);
+        const lineHrs7D = new Array(28).fill(dHours.targetHrs7D);
+        const lineHrs28D = new Array(28).fill(dHours.targetHrs28D);
         const hrsFmt = (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v;
 
         if(instancesOfCharts['chart-trajectory-hours-curve']) { instancesOfCharts['chart-trajectory-hours-curve'].destroy(); }
@@ -956,9 +959,11 @@
     }
 
     function triggerTrajectoryDownload(mode) {
-      if(!localCacheTrajectoryDataPayload) return;
+      if(mode === 'reach' && !localCacheReachTrajectoryDataPayload) return;
+      if(mode === 'hours' && !localCacheTrajectoryDataPayload) return;
+
       let csvContent = "data:text/csv;charset=utf-8,Day Interval,Trajectory Calculated Value\n";
-      let loopData = (mode === 'reach') ? localCacheTrajectoryDataPayload.chartData : localCacheTrajectoryDataPayload.chartHrsData;
+      let loopData = (mode === 'reach') ? localCacheReachTrajectoryDataPayload.chartReachData : localCacheTrajectoryDataPayload.chartHrsData;
       
       loopData.forEach(pt => {
         csvContent += `${pt.day},${pt.trajectoryValue}\n`;
@@ -981,6 +986,7 @@
         for (let j = 0; j < cols.length; j++) {
           row.push(`"${cols[j].innerText.replace(/"/g, '""')}"`);
         }
+        csv.join(",");
         csv.push(row.join(","));
       }
       const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
