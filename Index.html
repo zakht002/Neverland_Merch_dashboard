@@ -272,7 +272,7 @@
     <div id="clean-performance-view" class="sub-tab-content active">
       <div class="dashboard-card">
         <div class="comparison-select-panel" style="margin-bottom:20px;">
-          <label for="performance-sorting-metric-ddn">Order Top 20 Titles By Metric Criteria:</label>
+          <label for="performance-sorting-metric-ddn">Order Top Titles By Metric Criteria:</label>
           <select id="performance-sorting-metric-ddn" onchange="loadCleanPerformanceTableData()">
             <option value="Total Hrs ITD">Total Hours Streamed (Default DESC)</option>
             <option value="% Reach ITD">% Reach ITD</option>
@@ -280,7 +280,7 @@
           </select>
         </div>
         <button class="download-btn" onclick="exportHtmlTableToCsv('clean-performance-table', 'Past_Performance_ITD.csv')">Download Table Data</button>
-        <h3>Clean Performance ITD (Top 20 Ordered Output Matrix from All Past Performance)</h3>
+        <h3>Clean Performance ITD (Complete Output Matrix from All Past Performance)</h3>
         <div style="overflow-x:auto;"><table id="clean-performance-table"></table></div>
       </div>
     </div>
@@ -388,8 +388,38 @@
                 { type: 'bar', label: '7D Fact', data: r7Fact, backgroundColor: '#00d2ff' },
                 { type: 'bar', label: '28D Fact', data: r28Fact, backgroundColor: '#134e5e' },
                 { type: 'bar', label: 'Current % reach', data: rMax, backgroundColor: '#808080' },
-                { type: 'line', label: '7D Target Threshold', data: r7Goal, borderColor: '#ff7675', borderDash: [4,4], pointRadius: 0, fill: false },
-                { type: 'line', label: '28D Target Threshold', data: r28Goal, borderColor: '#1dd1a1', borderDash: [2,2], pointRadius: 0, fill: false }
+                { 
+                  type: 'line', 
+                  label: '7D Target Threshold', 
+                  data: r7Goal, 
+                  borderColor: '#ff7675', 
+                  borderDash: [4,4], 
+                  pointRadius: 0, 
+                  fill: false,
+                  datalabels: {
+                    display: function(context) {
+                      return context.dataIndex === context.dataset.data.length - 1; 
+                    },
+                    align: 'top',
+                    offset: 4
+                  }
+                },
+                { 
+                  type: 'line', 
+                  label: '28D Target Threshold', 
+                  data: r28Goal, 
+                  borderColor: '#1dd1a1', 
+                  borderDash: [2,2], 
+                  pointRadius: 0, 
+                  fill: false,
+                  datalabels: {
+                    display: function(context) {
+                      return context.dataIndex === context.dataset.data.length - 1; 
+                    },
+                    align: 'top',
+                    offset: 4
+                  }
+                }
               ]
             },
             options: {
@@ -416,8 +446,38 @@
                 { type: 'bar', label: '7D Fact', data: h7Fact, backgroundColor: '#00e5ff' },
                 { type: 'bar', label: '28D Fact', data: h28Fact, backgroundColor: '#134e5e' },
                 { type: 'bar', label: 'Current Hours', data: hMax, backgroundColor: '#808080' },
-                { type: 'line', label: '7D Goal Threshold', data: h7Goal, borderColor: '#feca57', borderDash: [4,4], pointRadius: 0, fill: false },
-                { type: 'line', label: '28D Goal Threshold', data: h28Goal, borderColor: '#ff6b6b', borderDash: [2,2], pointRadius: 0, fill: false }
+                { 
+                  type: 'line', 
+                  label: '7D Goal Threshold', 
+                  data: h7Goal, 
+                  borderColor: '#feca57', 
+                  borderDash: [4,4], 
+                  pointRadius: 0, 
+                  fill: false,
+                  datalabels: {
+                    display: function(context) {
+                      return context.dataIndex === context.dataset.data.length - 1; 
+                    },
+                    align: 'top',
+                    offset: 4
+                  }
+                },
+                { 
+                  type: 'line', 
+                  label: '28D Goal Threshold', 
+                  data: h28Goal, 
+                  borderColor: '#ff6b6b', 
+                  borderDash: [2,2], 
+                  pointRadius: 0, 
+                  fill: false,
+                  datalabels: {
+                    display: function(context) {
+                      return context.dataIndex === context.dataset.data.length - 1; 
+                    },
+                    align: 'top',
+                    offset: 4
+                  }
+                }
               ]
             },
             options: {
@@ -580,10 +640,10 @@
       document.getElementById('merch-kpi-grid').innerHTML = `
         <div class="kpi-card" title="Raw volume sum aggregation across timeline datasets."><div class="kpi-label">Total Impressions</div><div class="kpi-value">${formatNumberAbbreviation(totalPImps, false)}</div></div>
         <div class="kpi-card" title="Raw conversion sum aggregation volume index."><div class="kpi-label">Total Plays</div><div class="kpi-value">${formatNumberAbbreviation(totalPPlays, true)}</div></div>
-        <div class="kpi-card" title="Formula Matrix Calculation: Total Plays divided by Total Impressions volume sum. (Play Conversion Rate = TOTAL_PLAYS / TOTAL_IMPRESSIONS)"><div class="kpi-label">Play Conversion Rate</div><div class="kpi-value">${convRate}</div></div>
+        <div class="kpi-card" title="Play Conversion Rate = TOTAL_PLAYS / TOTAL_IMPRESSIONS"><div class="kpi-label">Play Conversion Rate</div><div class="kpi-value">${convRate}</div></div>
         <div class="kpi-card" title="Percentage total contribution from Editorially Controlled merchandising placements"><div class="kpi-label">Editorially Controlled Share</div><div class="kpi-value">${shareEdControlled}</div></div>
-        <div class="kpi-card" title="Formula Matrix Calculation: Editorially Influenced Impressions divided by Total Impressions volume index"><div class="kpi-label">Editorially Influenced Share</div><div class="kpi-value">${shareEdInfluenced}</div></div>
-        <div class="kpi-card" title="Formula Matrix Calculation: Algorithmic Plays volume split divided by Total structural Plays."><div class="kpi-label">Algorithmic Play Share</div><div class="kpi-value">${shareAlgoPlays}</div></div>
+        <div class="kpi-card" title="Editorially Influenced Impressions divided by Total Impressions volume index"><div class="kpi-label">Editorially Influenced Share</div><div class="kpi-value">${shareEdInfluenced}</div></div>
+        <div class="kpi-card" title="Algorithmic Plays volume split divided by Total structural Plays."><div class="kpi-label">Algorithmic Play Share</div><div class="kpi-value">${shareAlgoPlays}</div></div>
         <div class="kpi-card" title="${top5ContainersList}"><div class="kpi-label">Top Container Placements</div><div class="kpi-value" style="font-size:12px;">${topContainerName.toLowerCase()} (${topContainerShare})</div></div>
       `;
 
@@ -755,8 +815,8 @@
     }
 
     function renderTrajectoryEngineCharts(title) {
-      // 1. Fetch data from your new Reach Trajectory function
       google.script.run.withSuccessHandler(dReach => {
+        if (!dReach || !dReach.chartReachData || dReach.chartReachData.length === 0) return;
         localCacheReachTrajectoryDataPayload = dReach;
         
         const summaryElement = document.getElementById('trajectory-analysis-summary');
@@ -809,8 +869,8 @@
         });
       }).getTitleReachTrajectoryData(title);
 
-      // 2. Keep Hours Trajectory pipeline tied to original baseline method parameters
       google.script.run.withSuccessHandler(dHours => {
+        if (!dHours || !dHours.chartHrsData || dHours.chartHrsData.length === 0) return;
         localCacheTrajectoryDataPayload = dHours;
         const dayLabels = dHours.chartHrsData.map(pt => pt.day);
         
@@ -894,11 +954,29 @@
         if(!d || d.length === 0) return;
         const table = document.getElementById('clean-performance-table');
         table.innerHTML = '';
+        
         d.forEach((row, i) => {
           const tr = document.createElement('tr');
-          row.forEach(cell => {
+          row.forEach((cell, ci) => {
             const el = document.createElement(i === 0 ? 'th' : 'td');
-            el.textContent = cell;
+            
+            if (i > 0) {
+              if (ci === 4 || ci === 7 || ci === 8) { 
+                let pctNum = parseFloat(cell.toString().replace(/[%,\s]/g, ''));
+                el.textContent = isNaN(pctNum) ? cell : pctNum.toFixed(2) + "%";
+              } else if (ci === 5) { 
+                let hrsNum = parseFloat(cell.toString().replace(/[^0-9.-]/g, ''));
+                el.textContent = isNaN(hrsNum) ? cell : Math.round(hrsNum).toLocaleString() + " hrs";
+              } else if (ci === 6) { 
+                let impNum = parseFloat(cell.toString().replace(/[^0-9.-]/g, ''));
+                el.textContent = isNaN(impNum) ? cell : Math.round(impNum).toLocaleString();
+              } else {
+                el.textContent = cell;
+              }
+            } else {
+              el.textContent = cell; 
+            }
+            
             tr.appendChild(el);
           });
           table.appendChild(tr);
@@ -986,7 +1064,6 @@
         for (let j = 0; j < cols.length; j++) {
           row.push(`"${cols[j].innerText.replace(/"/g, '""')}"`);
         }
-        csv.join(",");
         csv.push(row.join(","));
       }
       const csvContent = "data:text/csv;charset=utf-8," + csv.join("\n");
