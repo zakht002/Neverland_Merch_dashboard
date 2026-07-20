@@ -481,3 +481,86 @@ function getTitleReachTrajectoryData(selectedTitle) {
   };
 }
 
+function getTitleTrajectoryData(selectedTitle) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  
+  // 1. Map Title Categories from Current Tab to find target category definitions
+  const currentSheet = ss.getSheetByName('Current');
+  const currentData = currentSheet.getDataRange().getDisplayValues();
+  const curHeaders = currentData[0];
+  const titleIdx = curHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const catIdx = curHeaders.indexOf('title_reach_category');
+  
+  let titleCategory = "Library Content";
+  if (titleIdx > -1 && catIdx > -1) {
+    for (let r = 1; r < currentData.length; r++) {
+      if (currentData[r][titleIdx] === selectedTitle) {
+        titleCategory = currentData[r][catIdx] ? currentData[r][catIdx].toString().trim() : "Library Content";
+        break;
+      }
+    }
+  }
+  
+  // 2. Assign dynamic tier-specific hour benchmarks
+  let targetHrs7D = 15000;
+  let targetHrs28D = 46000;
+  let lowCaseCat = titleCategory.toLowerCase();
+  if (lowCaseCat.includes("breakout")) {
+    targetHrs7D = 40000;
+    targetHrs28D = 115000;
+  }
+  
+  // 3. Process raw stream hours metrics directly from the sheet
+  const hoursSheet = ss.getSheetByName('Daily Hrs (Raw)');
+  const hoursData = hoursSheet.getDataRange().getDisplayValues();
+  const hoursHeaders = hoursData[0];
+  
+  const hTitleIdx = hoursHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const hDayIdx = hoursHeaders.indexOf('DAY_INTERVAL');
+  const hHrsIdx = hoursHeaders.indexOf('TOTAL_HRS_ITD');
+  
+  let parsedHoursPoints = [];
+  for (let i = 1; i < hoursData.length; i++) {
+    if (hoursData[i][hTitleIdx] === selectedTitle) {
+      let interval = parseInt(hoursData[i][hDayIdx]) || 0;
+      let hrsStr = hoursData[i][hHrsIdx].toString().trim().replace(/,/g, '');
+      let hrsFact = (hrsStr !== "" && hrsStr !== "-") ? parseFloat(hrsStr) : null;
+      if (isNaN(hrsFact)) hrsFact = null;
+      parsedHoursPoints.push({ day: interval, fact: hrsFact });
+    }
+  }
+  
+  parsedHoursPoints.sort((a, b) => a.day - b.day);
+  
+  // 4. Construct historical actual path + forecasted projection bound values
+  let finalHoursTrajectoryArr = [];
+  let lastKnownHoursTrajectory = 0;
+  
+  for (let day = 1; day <= 28; day++) {
+    let match = parsedHoursPoints.find(p => p.day === day);
+    let factVal = (match && match.fact !== null) ? match.fact : null;
+    let computedTrajectory = 0;
+    
+    if (factVal !== null) {
+      computedTrajectory = factVal;
+    } else {
+      let remainingDays = 28 - (day - 1);
+      if (remainingDays <= 0) remainingDays = 1;
+      computedTrajectory = lastKnownHoursTrajectory + ((targetHrs28D - lastKnownHoursTrajectory) / remainingDays);
+    }
+    
+    lastKnownHoursTrajectory = computedTrajectory;
+    finalHoursTrajectoryArr.push({
+      day: day,
+      trajectoryValue: computedTrajectory,
+      isFact: (factVal !== null)
+    });
+  }
+  
+  return {
+    title: selectedTitle,
+    targetHrs7D: targetHrs7D,
+    targetHrs28D: targetHrs28D,
+    chartHrsData: finalHoursTrajectoryArr
+  };
+}
