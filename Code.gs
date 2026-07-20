@@ -16,7 +16,7 @@ function doGet() {
 
 // ===== DOWNLOAD RAW DATA FOR ANY TABLE =====
 function downloadTableData(sheetName, range) { 
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID)    .getSheetByName(sheetName); 
+  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName); 
 
   return sheet.getRange(range).getDisplayValues();
 }
@@ -211,43 +211,45 @@ function getPastPerformanceData(sortKey, sortOrder) {
   if (rawData.length === 0) return [];
   
   const headers = rawData[0];
-  let sortIndex = -1;
   
-  if (sortKey) {
-    for (let j = 0; j < headers.length; j++) {
-      if (headers[j].toLowerCase().trim() === sortKey.toLowerCase().trim() || headers[j] === sortKey) {
-        sortIndex = j;
-        break;
-      }
-    }
-  }
+  const selectCols = [
+    'CONTENT_TITLE_WITH_SEASON_NUMBER',
+    'LAUNCH_DATE_SEASON',
+    'EXPIRES_IN_COUNTRY_DATE_EST_SEASON',
+    'Days on Platform',
+    '% Reach ITD',
+    'Total Hrs ITD'
+  ];
   
+  let targetIndexes = selectCols.map(c => headers.indexOf(c));
+  let finalHeaders = ['CONTENT_TITLE_WITH_SEASON_NUMBER', 'SUNRISE', 'SUNSET', 'Days on Platform', '% Reach ITD', 'Total Hrs ITD'];
+  
+  let sortIndex = headers.indexOf(sortKey);
   if (sortIndex === -1) {
-    for (let j = 0; j < headers.length; j++) {
-      if (headers[j].includes('%') || headers[j].toLowerCase().includes('reach')) {
-        sortIndex = j;
-        break;
-      }
-    }
+    sortIndex = headers.indexOf('Total Hrs ITD');
   }
   
   const dataRows = rawData.slice(1);
   if (sortIndex !== -1) {
     dataRows.sort((a, b) => {
-      let valA = a[sortIndex].replace(/[%,\s]/g, '');
-      let valB = b[sortIndex].replace(/[%,\s]/g, '');
+      let valA = a[sortIndex].replace(/[^0-9.-]/g, '');
+      let valB = b[sortIndex].replace(/[^0-9.-]/g, '');
       
-      if (headers[sortIndex].toLowerCase().includes('date') || headers[sortIndex].toLowerCase().includes('sun')) {
-        return sortOrder === 'ASC' ? new Date(a[sortIndex]) - new Date(b[sortIndex]) : new Date(b[sortIndex]) - new Date(a[sortIndex]);
+      if (sortKey && (sortKey.toLowerCase().includes('date') || sortKey.toLowerCase().includes('season'))) {
+        return new Date(a[sortIndex]) - new Date(b[sortIndex]);
       }
       
       let numA = parseFloat(valA) || 0;
       let numB = parseFloat(valB) || 0;
-      return sortOrder === 'ASC' ? numA - numB : numB - numA;
+      return numB - numA; 
     });
   }
   
-  return [headers].concat(dataRows.slice(0, 20));
+  let transformedRows = dataRows.slice(0, 20).map(row => {
+    return targetIndexes.map(idx => idx > -1 ? row[idx] : '');
+  });
+  
+  return [finalHeaders].concat(transformedRows);
 }
 
 function getHeaderMetadataProfile(selectedTitle) {
@@ -304,26 +306,36 @@ function getHeaderMetadataProfile(selectedTitle) {
 function getAdvancedMerchPivotData(selectedTitle) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Batch Container Merch');
-  const data = sheet.getDataRange().getDisplayValues();
+  if (!sheet) return { impressionsByContainer: {}, playsByContainer: {}, curationImpressions: {}, curationPlays: {}, timelineImpressions: {}, timelinePlays: {} };
   
-  const titleIdx = 4; 
-  const containerIdx = 21; 
-  const mixIdx = 22; 
-  const impIdx = 24; 
-  const playIdx = 25; 
-  const dateIdx = 29; 
+  const data = sheet.getDataRange().getDisplayValues();
+  if (data.length <= 1) return { impressionsByContainer: {}, playsByContainer: {}, curationImpressions: {}, curationPlays: {}, timelineImpressions: {}, timelinePlays: {} };
+  
+  const headers = data[0];
+  const titleIdx = headers.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const daysOnPlatformIdx = headers.indexOf('DAYS_ON_PLATFORM');
+  const containerIdx = headers.indexOf('CONTAINER_TITLE'); 
+  const mixIdx = headers.indexOf('IMPRESSION_BEHAVIOUR_EDITORIAL'); 
+  const impIdx = headers.indexOf('IMPRESSIONS'); 
+  const playIdx = headers.indexOf('PLAYS'); 
   
   let impressionsPivot = {}; let playsPivot = {};
   let mixImpressions = {}; let mixPlays = {};
   let timelineImpressions = {}; let timelinePlays = {};
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][titleIdx] !== selectedTitle) continue;
-    let container = data[i][containerIdx] || "Other Containers";
-    let mixType = data[i][mixIdx] || "3. Algorithmic";
-    let dateKey = data[i][dateIdx] || "Day 1";
-    let imps = parseFloat(data[i][impIdx].replace(/,/g,'')) || 0;
-    let plays = parseFloat(data[i][playIdx].replace(/,/g,'')) || 0;
+    const row = data[i];
+    const rowTitle = row[titleIdx];
+    const concatenatedTitleMatch = row[daysOnPlatformIdx] + " " + rowTitle;
+    
+    if (rowTitle !== selectedTitle && concatenatedTitleMatch !== selectedTitle) continue;
+    
+    let container = row[containerIdx] || "Other Containers";
+    let mixType = row[mixIdx] || "3. Algorithmic";
+    let dateKey = row[daysOnPlatformIdx] ? "Day " + row[daysOnPlatformIdx] : "Day 1";
+    
+    let imps = parseFloat(row[impIdx].replace(/,/g,'')) || 0;
+    let plays = parseFloat(row[playIdx].replace(/,/g,'')) || 0;
     
     impressionsPivot[container] = (impressionsPivot[container] || 0) + imps;
     playsPivot[container] = (playsPivot[container] || 0) + plays;
@@ -333,6 +345,7 @@ function getAdvancedMerchPivotData(selectedTitle) {
     timelineImpressions[dateKey] = (timelineImpressions[dateKey] || 0) + imps;
     timelinePlays[dateKey] = (timelinePlays[dateKey] || 0) + plays;
   }
+  
   return {
     impressionsByContainer: impressionsPivot, playsByContainer: playsPivot,
     curationImpressions: mixImpressions, curationPlays: mixPlays,
@@ -340,7 +353,6 @@ function getAdvancedMerchPivotData(selectedTitle) {
   };
 }
 
-// ===== INJECTED TRAJECTORY LOGIC FUNCTION ENGINE =====
 function getTitleTrajectoryData(selectedTitle) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   
@@ -434,16 +446,6 @@ function getTitleTrajectoryData(selectedTitle) {
     statusComment = "Below Target";
   }
 
-  // ========================================================
-  // ========== DYNAMIC HOURS TRAJECTORY SUBSYSTEM ==========
-  // ========================================================
-  let targetHrs7D = 15000; 
-  let targetHrs28D = 46000;
-  if (titleCategory === "Breakout Content") {
-    targetHrs7D = 40000;
-    targetHrs28D = 115000;
-  }
-
   const hrsSheet = ss.getSheetByName('Daily Hrs (Raw)');
   const hrsData = hrsSheet.getDataRange().getDisplayValues();
   const hrsHeaders = hrsData[0];
@@ -519,4 +521,54 @@ function getAllUniqueBatchTitlesList() {
     if (data[i][0] && data[i][0] !== "Grand Total" && data[i][0] !== "Row Labels") titles.push(data[i][0]);
   }
   return titles;
+}
+
+// ===== STREAMLINED BACKEND COMPETITIVE EVOLUTION MODEL ENGINE =====
+function getStreamlinedDailyEvolutionData(primaryTitle, benchmarkTitlesList, metricKey) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Daily Merch');
+  if (!sheet) return { timeline: {}, daysOnPlatform: {} };
+
+  const data = sheet.getDataRange().getDisplayValues();
+  if (data.length <= 1) return { timeline: {}, daysOnPlatform: {} };
+
+  const headers = data[0];
+  const titleIdx = headers.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const launchDayIdx = headers.indexOf('DAYS_SINCE_LAUNCH');
+  const platformDaysIdx = headers.indexOf('DAYS_ON_PLATFORM');
+  
+  let targetCol = headers.indexOf('TOTAL_IMPRESSIONS');
+  if (metricKey === 'plays') targetCol = headers.indexOf('TOTAL_PLAYS');
+  if (metricKey === 'clicks') targetCol = headers.indexOf('TOTAL_CLICKS');
+
+  let activeTitles = [primaryTitle];
+  if (benchmarkTitlesList && benchmarkTitlesList.length > 0) {
+    activeTitles = activeTitles.concat(benchmarkTitlesList);
+  }
+
+  let timelineMatrix = {}; // day -> title -> metricVolume
+  let titleMaxDaysOnPlatform = {};
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const tName = row[titleIdx];
+    if (!activeTitles.includes(tName)) continue;
+
+    const day = parseInt(row[launchDayIdx]) || 0;
+    if (day <= 0) continue; // Filter out zero and negative launch tracking constraints
+
+    const vol = parseFloat(row[targetCol].replace(/[^0-9.]/g, '')) || 0;
+    if (row[platformDaysIdx]) titleMaxDaysOnPlatform[tName] = row[platformDaysIdx];
+
+    if (!timelineMatrix[day]) {
+      timelineMatrix[day] = {};
+    }
+    timelineMatrix[day][tName] = (timelineMatrix[day][tName] || 0) + vol;
+  }
+
+  return {
+    timeline: timelineMatrix,
+    activeTitles: activeTitles,
+    daysOnPlatform: titleMaxDaysOnPlatform
+  };
 }
