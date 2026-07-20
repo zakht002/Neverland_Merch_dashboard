@@ -54,7 +54,7 @@
     .comparison-select-panel select { background: var(--bg-main); color: #fff; border: 1px solid var(--aurora); padding: 4px 8px; border-radius: 4px; outline: none; }
     
     .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-    .kpi-card { background: rgba(19, 78, 94, 0.15); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 229, 255, 0.2); text-align: center; }
+    .kpi-card { background: rgba(19, 78, 94, 0.15); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 229, 255, 0.2); text-align: center; position: relative; cursor: help; }
     .kpi-value { font-size: 16px; font-weight: bold; color: var(--aurora); margin-top: 4px; }
     .kpi-label { font-size: 11px; color: #ccc; }
   </style>
@@ -158,11 +158,10 @@
     </div>
 
     <div id="title-merchandising-subtab" class="sub-tab-content active">
-      <!-- Executive Summary Segment Block -->
       <div id="executive-summary-headline-card" class="analysis-box" style="font-size:15px; font-weight:600; color:var(--aurora);">Loading analysis insights...</div>
       <div id="merch-trends-narrative-summary" class="analysis-box">Compiling baseline observed trend summary...</div>
       
-      <!-- Additional Auto-Generated KPIs UI Frame -->
+      <!-- Key Performance Indicators Box Model Grid -->
       <div class="kpi-container" id="merch-kpi-grid"></div>
       
       <div class="comparison-select-panel">
@@ -170,6 +169,19 @@
         <select id="comparison-title-dropdown" onchange="evaluateSecondaryComparisonStream()">
           <option value="">-- Select Alternate Title to Benchmark --</option>
         </select>
+      </div>
+
+      <!-- CHART 5 PLACED FIRST -->
+      <div class="dashboard-card">
+        <div class="comparison-select-panel" style="border:none; padding:0; background:transparent;">
+          <label style="font-weight:600;">Chart 5 Configuration Metric Mode Selector:</label>
+          <select id="chart5-metric-selector" onchange="toggleChart5Metric()" style="margin-left:10px;">
+            <option value="impressions">Impressions Metric</option>
+            <option value="plays">Plays Metric</option>
+          </select>
+        </div>
+        <h4 id="label-chart-5">5. Container Contribution Mix</h4>
+        <div class="chart-container"><canvas id="chart-container-contribution-mix-canvas"></canvas></div>
       </div>
 
       <div class="dashboard-card">
@@ -196,37 +208,22 @@
           <div class="chart-container"><canvas id="chart-curation-mix-plays"></canvas></div>
         </div>
       </div>
-      
-      <div class="dashboard-card">
-        <div class="comparison-select-panel" style="border:none; padding:0; background:transparent;">
-          <label style="font-weight:600;">Chart 5 Configuration Metric Mode Selector:</label>
-          <select id="chart5-metric-selector" onchange="toggleChart5Metric()" style="margin-left:10px;">
-            <option value="impressions">Impressions Metric</option>
-            <option value="plays">Plays Metric</option>
-          </select>
-        </div>
-        <h4 id="label-chart-5">5. Container Contribution Mix</h4>
-        <div class="chart-container"><canvas id="chart-container-contribution-mix-canvas"></canvas></div>
-      </div>
 
+      <!-- SIMPLIFIED STREAMLINED DAILY EVOLUTION TRENDS INTERFACE BLOCK -->
       <div class="dashboard-card">
-        <button class="download-btn" onclick="triggerMerchMetricsExtract('timeline-imp')">Download Chart Data</button>
-        <h4>6. Daily Impressions by Container (Stacked Column Map View)</h4>
-        <div class="chart-container"><canvas id="chart-timeline-impressions-rolling"></canvas></div>
-      </div>
-      
-      <div class="dashboard-card">
-        <div class="comparison-select-panel" style="border:none; padding:0; background:transparent;">
-          <label><input type="checkbox" id="toggle-normalize-decay-curves" onchange="refreshTimelineTrendsSubsystem()"> Normalize Decay Curves View to Day 1 = 100</label>
+        <h3>Daily Merchandising Analytics Evolution Curve Dashboard</h3>
+        <div class="comparison-select-panel" style="display:flex; flex-wrap:wrap; gap:15px; background:transparent; border:none; padding:0;">
+          <div>
+            <label>Metric Selection Menu:</label>
+            <select id="competitive-metric-dropdown" onchange="refreshCompetitiveEvolutionCurveEngine()">
+              <option value="impressions">Impressions Metric Volume</option>
+              <option value="plays">Plays Metric Volume</option>
+              <option value="clicks">Clicks Metric Volume</option>
+            </select>
+          </div>
         </div>
-        <button class="download-btn" onclick="triggerMerchMetricsExtract('timeline-plays')">Download Chart Data</button>
-        <h4>7. Daily Impressions Trend Comparison (Decay Matrix Mode)</h4>
-        <div class="chart-container"><canvas id="chart-timeline-plays-rolling"></canvas></div>
-      </div>
-
-      <div class="dashboard-card">
-        <h4>8. Daily Plays Trend Comparison Curve Line Map</h4>
-        <div class="chart-container"><canvas id="chart-daily-plays-trend-comparison"></canvas></div>
+        <div id="competitive-kpis-box" class="analysis-box" style="margin-top:15px; font-weight:600; display:none;"></div>
+        <div class="chart-container"><canvas id="chart-competitive-evolution-canvas"></canvas></div>
       </div>
 
       <table id="title-table" style="display: none;"></table>
@@ -294,6 +291,7 @@
     let instancesOfCharts = {};
     let isTitleUnlocked = false; 
     let activePrimarySelectedTitle = "";
+    let activeRawPlainTitleString = "";
     let localCacheMerchDatasetPrimary = null;
     let localCacheMerchDatasetComparison = null;
     let localCacheTrajectoryDataPayload = null;
@@ -304,8 +302,7 @@
         const ddn = document.getElementById('comparison-title-dropdown');
         ddn.innerHTML = '<option value="">-- Select Alternate Title to Benchmark --</option>';
         list.forEach(t => {
-          let opt = document.createElement('option');
-          opt.value = t; opt.textContent = t;
+          let opt = document.createElement('option'); opt.value = t; opt.textContent = t;
           ddn.appendChild(opt);
         });
       }).getAllUniqueBatchTitlesList();
@@ -477,6 +474,7 @@
       btn.classList.add('active');
     }
 
+    // Explicitly updated to support Trajectory layout metrics parameters format mapping rules
     function showTitleSubTab(id, btn) { 
       const container = document.getElementById('title'); 
       container.querySelectorAll('.sub-tab-content').forEach(t => t.classList.remove('active')); 
@@ -486,10 +484,9 @@
     }
 
     function loadTitleTab(title) { 
-      // Capture plain title name and fetch structural profiles matching concatenation template parameters
       google.script.run.withSuccessHandler(p => { 
-        // Build uniform identity name pattern string format: Content (Days d)
         activePrimarySelectedTitle = p.name + " (" + p.daysOnPlatform + "d)";
+        activeRawPlainTitleString = p.name;
         isTitleUnlocked = true; 
         document.getElementById('comparison-title-dropdown').value = ""; 
         const navBtn = document.getElementById('nav-tab-title'); 
@@ -499,7 +496,10 @@
         document.getElementById('strip-title-name').textContent = p.name; 
         document.getElementById('strip-title-cat').textContent = p.category; 
         document.getElementById('strip-title-days').textContent = p.daysOnPlatform; 
-        document.getElementById('strip-title-reach').textContent = p.currentReach; 
+        
+        let reachFmt = parseFloat(p.currentReach.replace('%',''));
+        document.getElementById('strip-title-reach').textContent = isNaN(reachFmt) ? "0.0%" : reachFmt.toFixed(1) + "%";
+        
         document.getElementById('strip-title-hrs').textContent = (parseFloat(p.hoursStreamed) || 0).toLocaleString() + " hrs"; 
         const imgFrame = document.getElementById('strip-title-art-img'); 
         if(p.artImageThumbnail && p.artImageThumbnail.trim() !== "") { 
@@ -509,7 +509,6 @@
           imgFrame.style.display = "none"; 
         } 
 
-        // Execute advanced structural matrix updates
         google.script.run.withSuccessHandler(primaryData => { 
           localCacheMerchDatasetPrimary = primaryData; 
           localCacheMerchDatasetComparison = null;
@@ -533,14 +532,20 @@
       }).getAdvancedMerchPivotData(compTitle); 
     }
 
+    function formatNumberAbbreviation(num, isPlays) {
+      if (isPlays) {
+        return num >= 1000 ? (num / 1000).toFixed(1) + 'K' : num.toLocaleString();
+      } else {
+        return num >= 1000000 ? (num / 1000000).toFixed(1) + 'M' : num.toLocaleString();
+      }
+    }
+
     function compileMerchChartsSubsystem(primary, comparison) { 
       const pTitle = activePrimarySelectedTitle; 
       const rawCompVal = comparison ? document.getElementById('comparison-title-dropdown').value : ""; 
-      // Construct comparative formatted subtitle tags dynamically
       const cTitle = comparison ? rawCompVal + " (Comp)" : "";
 
-      // Dynamic header mapping matching reporting guidelines
-      document.getElementById('label-chart-1').textContent = pTitle + " - IMPRESSIONS by Container";
+      document.getElementById('label-chart-1').textContent = pTitle + " - IMPRESSIONS by Container (Top 10 Stacked Mix %)";
       document.getElementById('label-chart-2').textContent = pTitle + " - Plays By Container";
       document.getElementById('label-chart-3').textContent = pTitle + " - Impressions Curation Mix";
       document.getElementById('label-chart-4').textContent = pTitle + " - Plays Curation Mix";
@@ -558,12 +563,10 @@
       
       let shareEdControlled = totalPImps > 0 ? ((pEdControlledImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
       let shareEdInfluenced = totalPImps > 0 ? ((pEdInfluencedImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
-      let shareAlgoImps = totalPImps > 0 ? ((pAlgoImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
       
       let algoPlays = primary.curationPlays["3. Algorithmic"] || 0;
       let shareAlgoPlays = totalPPlays > 0 ? ((algoPlays / totalPPlays) * 100).toFixed(0) + "%" : "0%";
 
-      // Sort Containers Descending based on primary title contribution
       let sortedContainers = Object.keys(primary.impressionsByContainer || {}).sort((a,b) => primary.impressionsByContainer[b] - primary.impressionsByContainer[a]);
       let topContainerName = sortedContainers[0] || "None";
       let topContainerShare = totalPImps > 0 ? ((primary.impressionsByContainer[topContainerName] || 0) / totalPImps * 100).toFixed(0) + "%" : "0%";
@@ -572,18 +575,21 @@
       let newlyAddedShare = totalPPlays > 0 ? (((primary.playsByContainer["newly added"] || primary.playsByContainer["Newly Added"] || 0) / totalPPlays) * 100).toFixed(0) + "%" : "0%";
       let continueWatchShare = totalPPlays > 0 ? (((primary.playsByContainer["continue watching"] || primary.playsByContainer["Continue Watching"] || 0) / totalPPlays) * 100).toFixed(0) + "%" : "0%";
 
-      // Render Dashboard KPIs Grid Layout Frame
+      let top5ContainersList = sortedContainers.slice(0, 5).map(c => {
+        let p = totalPImps > 0 ? ((primary.impressionsByContainer[c] / totalPImps) * 100).toFixed(0) + "%" : "0%";
+        return `${c.toLowerCase()}: ${p}`;
+      }).join(" | ");
+
       document.getElementById('merch-kpi-grid').innerHTML = `
-        <div class="kpi-card"><div class="kpi-label">Total Impressions</div><div class="kpi-value">${totalPImps.toLocaleString()}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Total Plays</div><div class="kpi-value">${totalPPlays.toLocaleString()}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Play Conversion Rate</div><div class="kpi-value">${convRate}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Editorially Controlled Share</div><div class="kpi-value">${shareEdControlled}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Editorially Influenced Share</div><div class="kpi-value">${shareEdInfluenced}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Algorithmic Play Share</div><div class="kpi-value">${shareAlgoPlays}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Top Container Placements</div><div class="kpi-value" style="font-size:12px;">${topContainerName} (${topContainerShare})</div></div>
+        <div class="kpi-card" title="Raw volume sum aggregation across timeline datasets."><div class="kpi-label">Total Impressions</div><div class="kpi-value">${formatNumberAbbreviation(totalPImps, false)}</div></div>
+        <div class="kpi-card" title="Raw conversion sum aggregation volume index."><div class="kpi-label">Total Plays</div><div class="kpi-value">${formatNumberAbbreviation(totalPPlays, true)}</div></div>
+        <div class="kpi-card" title="Formula Matrix Calculation: Total Plays divided by Total Impressions volume sum. (Play Conversion Rate = TOTAL_PLAYS / TOTAL_IMPRESSIONS)"><div class="kpi-label">Play Conversion Rate</div><div class="kpi-value">${convRate}</div></div>
+        <div class="kpi-card" title="Percentage total contribution from Editorially Controlled merchandising placements"><div class="kpi-label">Editorially Controlled Share</div><div class="kpi-value">${shareEdControlled}</div></div>
+        <div class="kpi-card" title="Formula Matrix Calculation: Editorially Influenced Impressions divided by Total Impressions volume index"><div class="kpi-label">Editorially Influenced Share</div><div class="kpi-value">${shareEdInfluenced}</div></div>
+        <div class="kpi-card" title="Formula Matrix Calculation: Algorithmic Plays volume split divided by Total structural Plays."><div class="kpi-label">Algorithmic Play Share</div><div class="kpi-value">${shareAlgoPlays}</div></div>
+        <div class="kpi-card" title="${top5ContainersList}"><div class="kpi-label">Top Container Placements</div><div class="kpi-value" style="font-size:12px;">${topContainerName.toLowerCase()} (${topContainerShare})</div></div>
       `;
 
-      // Build Headlines Dynamically matching highest share observations
       let highestNonAlgoVal = Math.max(pEdControlledImps, pEdInfluencedImps);
       let headlineText = "";
       if (highestNonAlgoVal === pEdInfluencedImps && totalPImps > 0) {
@@ -613,19 +619,15 @@
         return unionList.slice(0, 10); 
       } 
 
-      // Denominator total configurations setup
       let totalCImps = Object.values((comparison && comparison.impressionsByContainer) || {}).reduce((a,b)=>a+b, 0) || 1;
       let totalCPlays = Object.values((comparison && comparison.playsByContainer) || {}).reduce((a,b)=>a+b, 0) || 1;
 
-      // Chart 1: IMPRESSIONS by Container Clustered Percentage Distribution Map
       const top10ImpsUnion = getTopContainersUnion(primary.impressionsByContainer, comparison ? comparison.impressionsByContainer : null); 
       renderHorizontalPercentageBars('chart-merch-impressions-container', top10ImpsUnion.map(x => x.name), top10ImpsUnion.map(x => (x.pVal / (totalPImps || 1)) * 100), top10ImpsUnion.map(x => (x.cVal / totalCImps) * 100), pTitle, cTitle); 
       
-      // Chart 2: Plays By Container Clustered Percentage Distribution Map
       const top10PlaysUnion = getTopContainersUnion(primary.playsByContainer, comparison ? comparison.playsByContainer : null); 
       renderHorizontalPercentageBars('chart-merch-plays-container', top10PlaysUnion.map(x => x.name), top10PlaysUnion.map(x => (x.pVal / (totalPPlays || 1)) * 100), top10PlaysUnion.map(x => (x.cVal / totalCPlays) * 100), pTitle, cTitle); 
       
-      // Chart 3 & 4: Curation Mix Framework ordered strictly by reporting standards
       const behaviorsOrder = ["1. Editorially Controlled", "2. Editorially Influenced", "3. Algorithmic"];
       
       let primaryImpShares = behaviorsOrder.map(b => ((primary.curationImpressions[b] || 0) / (totalPImps || 1)) * 100);
@@ -636,14 +638,10 @@
       let compPlayShares = behaviorsOrder.map(b => comparison ? (((comparison.curationPlays[b] || 0) / totalCPlays) * 100) : 0);
       renderHorizontalPercentageBars('chart-curation-mix-plays', behaviorsOrder, primaryPlayShares, compPlayShares, pTitle, cTitle);
 
-      // Render Dynamic Interactive Chart 5 Frame Subsystem
       toggleChart5Metric();
-
-      // Refresh daily timelines
       refreshTimelineTrendsSubsystem();
     }
 
-    // ===== NEW INTERACTIVE FRAMEWORK ELEMENT: CHART 5 MATRIX SWITCHER =====
     function toggleChart5Metric() {
       if(!localCacheMerchDatasetPrimary) return;
       const metric = document.getElementById('chart5-metric-selector').value;
@@ -656,7 +654,6 @@
       let totalP = Object.values(pObj || {}).reduce((a,b)=>a+b, 0) || 1;
       let totalC = Object.values(cObj || {}).reduce((a,b)=>a+b, 0) || 1;
       
-      // Calculate and slice the Top 10 descending list while grouping others under "Other"
       let sortedKeys = Object.keys(pObj || {}).sort((a,b) => pObj[b] - pObj[a]);
       let top10 = sortedKeys.slice(0, 10);
       
@@ -672,7 +669,6 @@
         compData.push((compOtherSum / totalC) * 100);
       }
       
-      // Automatically generate a matching chart headline
       let topContainerName = top10[0] || "Hero";
       let topSharePct = primaryData[0] ? primaryData[0].toFixed(0) + "%" : "0%";
       document.getElementById('label-chart-5').textContent = pTitle.split(" (")[0] + " gets " + topSharePct + " of total " + metric + " from '" + topContainerName.toLowerCase() + "'";
@@ -681,204 +677,84 @@
     }
 
     function refreshTimelineTrendsSubsystem() {
-      const pTitle = activePrimarySelectedTitle;
-      const compTitle = localCacheMerchDatasetComparison ? document.getElementById('comparison-title-dropdown').value : "";
-      
-      google.script.run.withSuccessHandler(dailyData => {
-        const daysUnion = Array.from(new Set([...Object.keys(dailyData.primary), ...Object.keys(dailyData.comparison)])).sort((a,b) => parseInt(a)-parseInt(b));
-        
-        // ----------------------------------------------------
-        // CHART 6: Daily Impressions Stacked Column Chart Map
-        // ----------------------------------------------------
-        const canvasImpId = 'chart-timeline-impressions-rolling';
-        if(instancesOfCharts[canvasImpId]) instancesOfCharts[canvasImpId].destroy();
-        
-        let containerTotals = {};
-        daysUnion.forEach(d => {
-          let dayData = dailyData.primary[d];
-          if(dayData && dayData.containers) {
-            Object.keys(dayData.containers).forEach(c => { containerTotals[c] = (containerTotals[c] || 0) + dayData.containers[c]; });
-          }
-        });
-        let topContainers = Object.keys(containerTotals).sort((a,b) => containerTotals[b] - containerTotals[a]).slice(0,10);
-        
-        let datasetsChart6 = topContainers.map(c => {
-          return { label: c, data: daysUnion.map(d => (dailyData.primary[d] && dailyData.primary[d].containers[c]) || 0), stacked: 'Stack0' };
-        });
-        
-        datasetsChart6.push({
-          label: 'Other',
-          data: daysUnion.map(d => {
-            let dayData = dailyData.primary[d]; if(!dayData) return 0;
-            let otherSum = 0; Object.keys(dayData.containers).forEach(c => { if(!topContainers.includes(c)) otherSum += dayData.containers[c]; });
-            return otherSum;
-          }),
-          stacked: 'Stack0'
+      // Direct pipeline redirect link interface trigger setup 
+      refreshCompetitiveEvolutionCurveEngine();
+    }
+
+    // ===== RE-ENGINEERED COMPACT METHOD: STREAMLINED EVOLUTION TREND CURVES PLOTTER =====
+    function refreshCompetitiveEvolutionCurveEngine() {
+      const primaryPlainTitle = activeRawPlainTitleString;
+      if(!primaryPlainTitle) return;
+
+      const metric = document.getElementById('competitive-metric-dropdown').value;
+      const compRawDropdownVal = document.getElementById('comparison-title-dropdown').value;
+      let benchmarkList = compRawDropdownVal ? [compRawDropdownVal] : [];
+
+      google.script.run.withSuccessHandler(data => {
+        const daysUnion = Object.keys(data.timeline).sort((a,b) => parseInt(a)-parseInt(b));
+        const canvasId = 'chart-competitive-evolution-canvas';
+        if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
+
+        let chartDatasets = [];
+        data.activeTitles.forEach((tName, idx) => {
+          let linePoints = daysUnion.map(d => {
+            return (data.timeline[d] && data.timeline[d][tName]) || 0;
+          });
+
+          let isPrimary = (tName === primaryPlainTitle);
+          let labelWithDays = tName + " (" + (data.daysOnPlatform[tName] || '0') + "d)";
+
+          chartDatasets.push({
+            label: labelWithDays,
+            data: linePoints,
+            borderColor: isPrimary ? '#008080' : '#00e5ff', // ITVX Teal for Primary, Aurora for secondary additions
+            borderWidth: isPrimary ? 2.5 : 1.5,
+            fill: false,
+            pointRadius: 3
+          });
         });
 
-        instancesOfCharts[canvasImpId] = new Chart(document.getElementById(canvasImpId).getContext('2d'), {
-          type: 'bar',
-          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: datasetsChart6 },
+        instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+          type: 'line',
+          data: { labels: daysUnion, datasets: chartDatasets },
           options: {
             responsive: true, maintainAspectRatio: false,
-            scales: { x: { stacked: true, ticks: { color: '#fff' } }, y: { stacked: true, ticks: { color: '#fff' } } },
-            plugins: { 
-              legend: { labels: { color: '#fff' } }, 
+            scales: {
+              x: { title: { display: true, text: 'DAYS_SINCE_LAUNCH', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+              y: { title: { display: true, text: 'Volume (' + metric + ')', color: '#fff' }, ticks: { color: '#fff' } }
+            },
+            plugins: {
+              legend: { labels: { color: '#fff' } },
               datalabels: { display: false },
               tooltip: {
                 callbacks: {
                   label: function(context) {
-                    let dataset = context.dataset;
-                    let value = dataset.data[context.dataIndex] || 0;
-                    let totalOnDay = context.chart.data.datasets.reduce((sum, ds) => sum + (ds.data[context.dataIndex] || 0), 0) || 1;
-                    let share = ((value / totalOnDay) * 100).toFixed(1) + "%";
-                    return dataset.label + ": " + value.toLocaleString() + " (" + share + ")";
+                    let fullTitleLabel = context.dataset.label;
+                    let val = context.raw || 0;
+                    return fullTitleLabel + ": " + val.toLocaleString();
                   }
                 }
               }
             }
           }
         });
-
-        // ----------------------------------------------------
-        // CHART 7: Daily Impressions Trend Decay Comparison
-        // ----------------------------------------------------
-        const canvasTrendId = 'chart-timeline-plays-rolling';
-        if(instancesOfCharts[canvasTrendId]) instancesOfCharts[canvasTrendId].destroy();
-        
-        const isNormalized = document.getElementById('toggle-normalize-decay-curves').checked;
-        
-        let pDay1Raw = (dailyData.primary[daysUnion[0]] && dailyData.primary[daysUnion[0]].totalImpressions) || 1;
-        let cDay1Raw = (dailyData.comparison[daysUnion[0]] && dailyData.comparison[daysUnion[0]].totalImpressions) || 1;
-        if(pDay1Raw === 0) pDay1Raw = 1; if(cDay1Raw === 0) cDay1Raw = 1;
-
-        let trendDataset = [
-          {
-            label: pTitle,
-            data: daysUnion.map(d => {
-              let val = (dailyData.primary[d] && dailyData.primary[d].totalImpressions) || 0;
-              return isNormalized ? (val / pDay1Raw * 100) : val;
-            }),
-            borderColor: '#008080', fill: false
-          }
-        ];
-
-        if (compTitle) {
-          trendDataset.push({
-            label: compTitle + " (Comp)",
-            data: daysUnion.map(d => {
-              let val = (dailyData.comparison[d] && dailyData.comparison[d].totalImpressions) || 0;
-              return isNormalized ? (val / cDay1Raw * 100) : val;
-            }),
-            borderColor: '#00e5ff', fill: false
-          });
-        }
-
-        instancesOfCharts[canvasTrendId] = new Chart(document.getElementById(canvasTrendId).getContext('2d'), {
-          type: 'line',
-          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: trendDataset },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff', callback: v => isNormalized ? v.toFixed(0) + '%' : v.toLocaleString() } } },
-            plugins: { legend: { labels: { color: '#fff' } }, datalabels: { display: false } }
-          }
-        });
-
-        // ----------------------------------------------------
-        // CHART 8: Daily Plays Trend Comparison Curve
-        // ----------------------------------------------------
-        const canvasDailyPlaysId = 'chart-daily-plays-trend-comparison';
-        if(instancesOfCharts[canvasDailyPlaysId]) instancesOfCharts[canvasDailyPlaysId].destroy();
-        
-        let playsTrendDatasets = [
-          {
-            label: pTitle,
-            data: daysUnion.map(d => (dailyData.primary[d] && dailyData.primary[d].totalPlays) || 0),
-            borderColor: '#1dd1a1', fill: false
-          }
-        ];
-        
-        if (compTitle) {
-          playsTrendDatasets.push({
-            label: compTitle + " (Comp)",
-            data: daysUnion.map(d => (dailyData.comparison[d] && dailyData.comparison[d].totalPlays) || 0),
-            borderColor: '#ff7675', fill: false
-          });
-        }
-
-        instancesOfCharts[canvasDailyPlaysId] = new Chart(document.getElementById(canvasDailyPlaysId).getContext('2d'), {
-          type: 'line',
-          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: playsTrendDatasets },
-          options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff' } } },
-            plugins: { legend: { labels: { color: '#fff' } }, datalabels: { display: false } }
-          }
-        });
-
-      }).getDailyMerchDataModel(pTitle.split(" (")[0], compTitle);
+      }).getStreamlinedDailyEvolutionData(primaryPlainTitle, benchmarkList, metric);
     }
 
     function renderHorizontalPercentageBars(canvasId, labels, dataP, dataC, pTitle, cTitle) {
       if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
-      
-      let datasets = [{
-        label: pTitle,
-        data: dataP,
-        backgroundColor: '#008080',
-        barThickness: 12,
-        maxBarThickness: 16
-      }];
-      
-      if (cTitle) {
-        datasets.push({
-          label: cTitle,
-          data: dataC,
-          backgroundColor: '#00e5ff',
-          barThickness: 12,
-          maxBarThickness: 16
-        });
-      }
+      let datasets = [{ label: pTitle, data: dataP, backgroundColor: '#008080', barThickness: 12, maxBarThickness: 16 }];
+      if (cTitle) { datasets.push({ label: cTitle, data: dataC, backgroundColor: '#00e5ff', barThickness: 12, maxBarThickness: 16 }); }
       
       instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
-        plugins: [ChartDataLabels],
-        type: 'bar',
-        data: { labels: labels, datasets: datasets },
+        plugins: [ChartDataLabels], type: 'bar', data: { labels: labels, datasets: datasets },
         options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
+          indexAxis: 'y', responsive: true, maintainAspectRatio: false,
           scales: {
             x: { min: 0, max: 100, ticks: { color: '#fff', callback: v => v.toFixed(0) + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
             y: { ticks: { color: '#fff' }, grid: { display: false } }
           },
-          plugins: {
-            legend: { position: 'top', labels: { color: '#fff' } },
-            datalabels: {
-              anchor: 'end',
-              align: 'right',
-              color: '#fff',
-              font: { size: 10, weight: '600' },
-              formatter: v => v > 0 ? v.toFixed(0) + '%' : '0%'
-            }
-          }
-        }
-      });
-    }
-
-    function renderTimelineLineChart(canvasId, labels, primaryObj, comparisonObj, pTitle, cTitle, colorP) {
-      if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
-      let datasets = [{ label: pTitle, data: labels.map(l => primaryObj[l] || 0), borderColor: colorP, fill: false, pointRadius: 2 }];
-      if (comparisonObj) {
-        datasets.push({ label: cTitle, data: labels.map(l => comparisonObj[l] || 0), borderColor: '#00e5ff', fill: false, pointRadius: 2 });
-      }
-      instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
-        type: 'line',
-        data: { labels: labels, datasets: datasets },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff' } } },
-          plugins: { legend: { labels: { color: '#fff' } } }
+          plugins: { legend: { position: 'top', labels: { color: '#fff' } }, datalabels: { anchor: 'end', align: 'right', color: '#fff', font: { size: 10, weight: '600' }, formatter: v => v > 0 ? v.toFixed(0) + '%' : '0%' } }
         }
       });
     }
@@ -887,80 +763,89 @@
       google.script.run.withSuccessHandler(d => {
         localCacheTrajectoryDataPayload = d;
         const summaryElement = document.getElementById('trajectory-analysis-summary');
-        
+        let reachFmtVal = (d.currentRate * 100).toFixed(1) + "%";
+
         summaryElement.innerHTML = `
           Category Tier Classification: ${d.category} | Current Operational Track Status: <span style="color:${d.status === 'On Target' ? '#1dd1a1':'#ff7675'}">${d.status.toUpperCase()}</span><br/>
-          Historical benchmark cumulative index is tracking at <strong>${(d.currentRate * 100).toFixed(2)}%</strong> towards its Day 28 objective target of <strong>${(d.target28D * 100).toFixed(1)}%</strong>.<br/>
+          Historical benchmark cumulative index is tracking at <strong>${reachFmtVal}</strong> towards its Day 28 objective target of <strong>${(d.target28D * 100).toFixed(1)}%</strong>.<br/>
           To secure full parameter alignment over the remaining lifecycle run, this product requires an estimated daily conversion vector velocity of <strong>${(d.neededDailyRate * 100).toFixed(3)}%</strong>.
         `;
 
-        const dayLabels = d.chartData.map(pt => 'Day ' + pt.day);
-        const trajectoryCurveValues = d.chartData.map(pt => pt.trajectoryValue);
+        const dayLabels = d.chartData.map(pt => pt.day);
         const staticLine7D = new Array(28).fill(d.target7D);
         const staticLine28D = new Array(28).fill(d.target28D);
         const pctFmt = (v) => (v * 100).toFixed(2) + '%';
 
+        let primarySolidPoints = [];
+        let primaryDottedPoints = [];
+
+        d.chartData.forEach((pt, i) => {
+          if (pt.isFact) {
+            primarySolidPoints.push(pt.trajectoryValue);
+            primaryDottedPoints.push(null);
+          } else {
+            if (i > 0 && d.chartData[i-1].isFact) {
+              primaryDottedPoints[i-1] = d.chartData[i-1].trajectoryValue;
+            }
+            primarySolidPoints.push(null);
+            primaryDottedPoints.push(pt.trajectoryValue);
+          }
+        });
+
         if(instancesOfCharts['chart-trajectory-reach']) { instancesOfCharts['chart-trajectory-reach'].destroy(); }
         instancesOfCharts['chart-trajectory-reach'] = new Chart(document.getElementById('chart-trajectory-reach').getContext('2d'), {
-          plugins: [ChartDataLabels],
-          type: 'line',
+          plugins: [ChartDataLabels], type: 'line',
           data: {
             labels: dayLabels,
             datasets: [
-              { label: 'Actual Trajectory Line', data: trajectoryCurveValues, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: 'Actual Solid Trajectory (Factual Data Points)', data: primarySolidPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: 'Forecasted Dotted Segment', data: primaryDottedPoints, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 1, borderDash: [4, 4], fill: false },
               { label: '7-Day Target Line', data: staticLine7D, borderColor: '#ff7675', borderDash: [5, 5], pointRadius: 0, fill: false },
               { label: '28-Day Target Line', data: staticLine28D, borderColor: '#1dd1a1', borderDash: [5, 5], pointRadius: 0, fill: false }
             ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: {
-              legend: { position: 'bottom', labels: { color: '#fff' } },
-              datalabels: {
-                color: '#fff', font: { size: 9 }, align: 'top', offset: 4,
-                display: function(ctx) { return (ctx.dataIndex === 6 || ctx.dataIndex === 13 || ctx.dataIndex === 20 || ctx.dataIndex === 27); },
-                formatter: pctFmt
-              }
-            },
-            scales: {
-              y: { ticks: { color: '#fff', callback: pctFmt }, grid: { color: 'rgba(19, 78, 94, 0.1)' } },
-              x: { ticks: { color: '#fff' }, grid: { color: 'rgba(19, 78, 94, 0.1)' } }
-            }
+            plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', font: { size: 9 }, align: 'top', offset: 4, display: function(ctx) { return (ctx.dataIndex === 6 || ctx.dataIndex === 13 || ctx.dataIndex === 20 || ctx.dataIndex === 27); }, formatter: pctFmt } },
+            scales: { y: { ticks: { color: '#fff', callback: pctFmt }, grid: { color: 'rgba(19, 78, 94, 0.1)' } }, x: { ticks: { color: '#fff' }, grid: { color: 'rgba(19, 78, 94, 0.1)' } } }
           }
         });
 
-        const dayHrsLabels = d.chartHrsData.map(pt => 'Day ' + pt.day);
-        const curveHrsValues = d.chartHrsData.map(pt => pt.trajectoryValue);
+        let hoursSolidPoints = [];
+        let hoursDottedPoints = [];
+        d.chartHrsData.forEach((pt, i) => {
+          if (pt.isFact) {
+            hoursSolidPoints.push(pt.trajectoryValue);
+            hoursDottedPoints.push(null);
+          } else {
+            if (i > 0 && d.chartHrsData[i-1].isFact) {
+              hoursDottedPoints[i-1] = d.chartHrsData[i-1].trajectoryValue;
+            }
+            hoursSolidPoints.push(null);
+            hoursDottedPoints.push(pt.trajectoryValue);
+          }
+        });
+
         const lineHrs7D = new Array(28).fill(d.targetHrs7D);
         const lineHrs28D = new Array(28).fill(d.target28D);
         const hrsFmt = (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v;
 
         if(instancesOfCharts['chart-trajectory-hours-curve']) { instancesOfCharts['chart-trajectory-hours-curve'].destroy(); }
         instancesOfCharts['chart-trajectory-hours-curve'] = new Chart(document.getElementById('chart-trajectory-hours-curve').getContext('2d'), {
-          plugins: [ChartDataLabels],
-          type: 'line',
+          plugins: [ChartDataLabels], type: 'line',
           data: {
-            labels: dayHrsLabels,
+            labels: dayLabels,
             datasets: [
-              { label: 'Hours Trajectory Curve', data: curveHrsValues, borderColor: '#1dd1a1', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: 'Hours Solid Trajectory (Factual Data Points)', data: hoursSolidPoints, borderColor: '#1dd1a1', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: 'Hours Forecasted Dotted Segment', data: hoursDottedPoints, borderColor: '#1dd1a1', borderWidth: 3, pointRadius: 1, borderDash: [4, 4], fill: false },
               { label: '7-Day Target Goal Line', data: lineHrs7D, borderColor: '#feca57', borderDash: [5, 5], pointRadius: 0, fill: false },
               { label: '28-Day Target Goal Line', data: lineHrs28D, borderColor: '#ff6b6b', borderDash: [5, 5], pointRadius: 0, fill: false }
             ]
           },
           options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: {
-              legend: { position: 'bottom', labels: { color: '#fff' } },
-              datalabels: {
-                color: '#fff', font: { size: 9 }, align: 'top', offset: 4,
-                display: function(ctx) { return (ctx.dataIndex === 6 || ctx.dataIndex === 13 || ctx.dataIndex === 20 || ctx.dataIndex === 27); },
-                formatter: hrsFmt
-              }
-            },
-            scales: {
-              y: { ticks: { color: '#fff', callback: hrsFmt }, grid: { color: 'rgba(19, 78, 94, 0.1)' } },
-              x: { ticks: { color: '#fff' } }
-            }
+            plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', font: { size: 9 }, align: 'top', offset: 4, display: function(ctx) { return (ctx.dataIndex === 6 || ctx.dataIndex === 13 || ctx.dataIndex === 20 || ctx.dataIndex === 27); }, formatter: hrsFmt } },
+            scales: { y: { ticks: { color: '#fff', callback: hrsFmt }, grid: { color: 'rgba(19, 78, 94, 0.1)' } }, x: { ticks: { color: '#fff' } } }
           }
         });
       }).getTitleTrajectoryData(title);
@@ -973,24 +858,12 @@
         
         if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
         instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
-          plugins: [ChartDataLabels],
-          type: 'bar',
-          data: {
-            labels: d.reach.labels,
-            datasets: [
-              { label: 'Monthly ITVX % Reach', data: d.reach.values, backgroundColor: '#134e5e', borderColor: '#00e5ff', borderWidth: 1 }
-            ]
-          },
+          plugins: [ChartDataLabels], type: 'bar',
+          data: { labels: d.reach.labels, datasets: [{ label: 'Monthly ITVX % Reach', data: d.reach.values, backgroundColor: '#134e5e', borderColor: '#00e5ff', borderWidth: 1 }] },
           options: {
             responsive: true, maintainAspectRatio: false,
-            scales: {
-              y: { ticks: { color: '#fff', callback: pctFmt }, grid: { color: 'rgba(255,255,255,0.05)' } },
-              x: { ticks: { color: '#fff' }, grid: { display: false } }
-            },
-            plugins: {
-              legend: { display: true, labels: { color: '#fff' } },
-              datalabels: { color: '#fff', anchor: 'end', align: 'top', formatter: pctFmt }
-            }
+            scales: { y: { ticks: { color: '#fff', callback: pctFmt }, grid: { color: 'rgba(255,255,255,0.05)' } }, x: { ticks: { color: '#fff' }, grid: { display: false } } },
+            plugins: { legend: { display: true, labels: { color: '#fff' } }, datalabels: { color: '#fff', anchor: 'end', align: 'top', formatter: pctFmt } }
           }
         });
 
@@ -999,12 +872,8 @@
         
         if(instancesOfCharts[canvasHrsId]) instancesOfCharts[canvasHrsId].destroy();
         instancesOfCharts[canvasHrsId] = new Chart(document.getElementById(canvasHrsId).getContext('2d'), {
-          plugins: [ChartDataLabels],
-          type: 'bar',
-          data: {
-            labels: d.hours.labels,
-            datasets: [{ label: 'Total Volume Streamed Hours', data: d.hours.values, backgroundColor: '#008080', borderColor: '#1dd1a1', borderWidth: 1 }]
-          },
+          plugins: [ChartDataLabels], type: 'bar',
+          data: { labels: d.hours.labels, datasets: [{ label: 'Total Volume Streamed Hours', data: d.hours.values, backgroundColor: '#008080', borderColor: '#1dd1a1', borderWidth: 1 }] },
           options: {
             responsive: true, maintainAspectRatio: false,
             scales: { y: { ticks: { color: '#fff', callback: hrsFmt } }, x: { ticks: { color: '#fff' } } },
