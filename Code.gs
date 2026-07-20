@@ -17,7 +17,6 @@ function doGet() {
 // ===== DOWNLOAD RAW DATA FOR ANY TABLE =====
 function downloadTableData(sheetName, range) { 
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(sheetName); 
-
   return sheet.getRange(range).getDisplayValues();
 }
 
@@ -131,7 +130,13 @@ function generateLiveCategorySummaryModel(categoryName) {
     if (!mappedCat || mappedCat !== categoryName) continue;
     
     let day = parseInt(reachData[i][rDayIdx]) || 0;
-    let reachVal = parseFloat(reachData[i][rReachIdx].replace(/[%]/g, '')) / 100 || 0;
+    
+let reachStr = reachData[i][rReachIdx].toString().trim();
+let reachVal = 0;
+if (reachStr !== "" && reachStr !== "-") {
+  reachVal = reachStr.includes('%') ? parseFloat(reachStr.replace('%','')) / 100 : parseFloat(reachStr);
+  if (isNaN(reachVal)) reachVal = 0;
+}
 
     if (!titleTracker[title]) {
       titleTracker[title] = { r7Fact: 0, r28Fact: 0, rMax: 0, h7Fact: 0, h28Fact: 0, hMax: 0 };
@@ -204,6 +209,7 @@ function getMonthlyEngagementData() {
   };
 }
 
+// ===== UPDATED ACCORDING TO SPECIFICATIONS: OVERALL PERFORMANCE ITD FROM PAST SHEET =====
 function getPastPerformanceData(sortKey, sortOrder) {
   const ss = SpreadsheetApp.openById(EXTERNAL_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('All Past Perfomance');
@@ -211,7 +217,6 @@ function getPastPerformanceData(sortKey, sortOrder) {
   if (rawData.length === 0) return [];
   
   const headers = rawData[0];
-  
   const selectCols = [
     'CONTENT_TITLE_WITH_SEASON_NUMBER',
     'LAUNCH_DATE_SEASON',
@@ -235,7 +240,7 @@ function getPastPerformanceData(sortKey, sortOrder) {
       let valA = a[sortIndex].replace(/[^0-9.-]/g, '');
       let valB = b[sortIndex].replace(/[^0-9.-]/g, '');
       
-      if (sortKey && (sortKey.toLowerCase().includes('date') || sortKey.toLowerCase().includes('season'))) {
+      if (sortKey && (sortKey.toLowerCase().includes('date') || sortKey.toLowerCase().includes('season') || sortKey.toLowerCase().includes('sunrise') || sortKey.toLowerCase().includes('sunset'))) {
         return new Date(a[sortIndex]) - new Date(b[sortIndex]);
       }
       
@@ -252,17 +257,43 @@ function getPastPerformanceData(sortKey, sortOrder) {
   return [finalHeaders].concat(transformedRows);
 }
 
+// MATCH % REACH ITD EXACTLY WITH THE LIVE PIVOT CURRENT TAB AS REQUESTED
 function getHeaderMetadataProfile(selectedTitle) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const pivotSheet = ss.getSheetByName('Pivot Current');
+  const pivotData = pivotSheet.getDataRange().getDisplayValues();
+  const pivotHeaders = pivotData[0];
+  
+  const pTitleIdx = 0; 
+  const pReachIdx = pivotHeaders.indexOf('% Reach ITD');
+  const pHrsIdx = pivotHeaders.indexOf('Total Hrs ITD');
+  const pDaysIdx = pivotHeaders.indexOf('Days on Platform');
+  
+  let verifiedReach = "0.0%";
+  let verifiedHours = "0";
+  let verifiedDays = "0";
+
+  for (let r = 1; r < pivotData.length; r++) {
+    if (pivotData[r][pTitleIdx] === selectedTitle || selectedTitle.includes(pivotData[r][pTitleIdx])) {
+      if (pReachIdx > -1) verifiedReach = pivotData[r][pReachIdx];
+      if (pHrsIdx > -1) verifiedHours = pivotData[r][pHrsIdx];
+      if (pDaysIdx > -1) verifiedDays = pivotData[r][pDaysIdx];
+      break;
+    }
+  }
+
   const currentSheet = ss.getSheetByName('Current');
   const currentData = currentSheet.getDataRange().getDisplayValues();
   const curHeaders = currentData[0];
-  
-  const titleIdx = curHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
   const catIdx = curHeaders.indexOf('title_reach_category');
-  const daysIdx = curHeaders.indexOf('DAYS_ON_PLATFORM');
-  const reachIdx = curHeaders.indexOf('PERC_REACH_ITD');
-  const hrsIdx = curHeaders.indexOf('TOTAL_HRS_ITD');
+  let titleCategory = "Library Content";
+
+  for (let r = 1; r < currentData.length; r++) {
+    if (currentData[r][curHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER')] === selectedTitle) {
+      if (catIdx > -1) titleCategory = currentData[r][catIdx];
+      break;
+    }
+  }
   
   let artSheet = ss.getSheetByName('Titles Art');
   let artUrl = "";
@@ -276,31 +307,14 @@ function getHeaderMetadataProfile(selectedTitle) {
     }
   }
   
-  let profile = {
+  return {
     name: selectedTitle,
-    category: "Library Content",
-    daysOnPlatform: "0",
-    currentReach: "0.0%",
-    hoursStreamed: "0",
+    category: titleCategory,
+    daysOnPlatform: verifiedDays,
+    currentReach: verifiedReach,
+    hoursStreamed: verifiedHours,
     artImageThumbnail: artUrl
   };
-  
-  if (titleIdx > -1) {
-    for (let r = 1; r < currentData.length; r++) {
-      if (currentData[r][titleIdx] === selectedTitle) {
-        if(catIdx > -1) profile.category = currentData[r][catIdx];
-        if(daysIdx > -1) profile.daysOnPlatform = currentData[r][daysIdx];
-        if(reachIdx > -1) {
-          let num = parseFloat(currentData[r][reachIdx].replace('%','')) || 0;
-          if(num < 1 && num > 0) num = num * 100;
-          profile.currentReach = num.toFixed(1) + "%";
-        }
-        if(hrsIdx > -1) profile.hoursStreamed = currentData[r][hrsIdx];
-        break;
-      }
-    }
-  }
-  return profile;
 }
 
 function getAdvancedMerchPivotData(selectedTitle) {
@@ -353,9 +367,10 @@ function getAdvancedMerchPivotData(selectedTitle) {
   };
 }
 
-function getTitleTrajectoryData(selectedTitle) {
+function getTitleReachTrajectoryData(selectedTitle) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   
+  // 1. Map Title Categories from Current Tab to find target category definitions
   const currentSheet = ss.getSheetByName('Current');
   const currentData = currentSheet.getDataRange().getDisplayValues();
   const curHeaders = currentData[0];
@@ -364,136 +379,93 @@ function getTitleTrajectoryData(selectedTitle) {
   
   let titleCategory = "Library Content"; 
   if (titleIdx > -1 && catIdx > -1) {
-    for(let r=1; r<currentData.length; r++) {
-      if(currentData[r][titleIdx] === selectedTitle) {
-        titleCategory = currentData[r][catIdx];
+    for (let r = 1; r < currentData.length; r++) {
+      if (currentData[r][titleIdx] === selectedTitle) {
+        titleCategory = currentData[r][catIdx] ? currentData[r][catIdx].toString().trim() : "Library Content";
         break;
       }
     }
   }
   
+  // 2. Assign Tier Specific Targets dynamically (Using flexible case-insensitive match)
   let target7D = 0.002;  
   let target28D = 0.005; 
-  if (titleCategory === "Breakout Content") {
+  
+  let lowCaseCat = titleCategory.toLowerCase();
+  if (lowCaseCat.includes("breakout")) {
     target7D = 0.004;  
     target28D = 0.01;   
+  } else if (lowCaseCat.includes("premium")) {
+    target7D = 0.002;
+    target28D = 0.005;
   }
   
-  const rawSheet = ss.getSheetByName('Daily % Reach (Raw)');
-  const rawData = rawSheet.getDataRange().getDisplayValues();
-  const rawHeaders = rawData[0];
+  // 3. Process raw information directly from Daily % Reach (Raw)
+  const reachSheet = ss.getSheetByName('Daily % Reach (Raw)');
+  const reachData = reachSheet.getDataRange().getDisplayValues();
+  const reachHeaders = reachData[0];
   
-  const bIdx = rawHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
-  const eIdx = rawHeaders.indexOf('DAY_INTERVAL');
-  const fIdx = rawHeaders.indexOf('DAILY_ITD_REACH');
+  const rbIdx = reachHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
+  const reIdx = reachHeaders.indexOf('DAY_INTERVAL');
+  const rfIdx = reachHeaders.indexOf('DAILY_ITD_REACH');
   
-  let parsedPoints = [];
-  for(let i=1; i<rawData.length; i++) {
-    if(rawData[i][bIdx] === selectedTitle) {
-      let interval = parseInt(rawData[i][eIdx]) || 0;
-      let reachStr = rawData[i][fIdx].toString().trim();
+  let parsedReachPoints = [];
+  for (let i = 1; i < reachData.length; i++) {
+    if (reachData[i][rbIdx] === selectedTitle) {
+      let interval = parseInt(reachData[i][reIdx]) || 0;
+      let reachStr = reachData[i][rfIdx].toString().trim().replace(/,/g, '');
       let reachFact = null;
       
-      if(reachStr !== "" && reachStr !== "-") {
-        reachFact = reachStr.includes('%') ? parseFloat(reachStr.replace('%',''))/100 : parseFloat(reachStr);
-        if(isNaN(reachFact)) reachFact = null;
+      if (reachStr !== "" && reachStr !== "-") {
+        reachFact = reachStr.includes('%') ? parseFloat(reachStr.replace('%','')) / 100 : parseFloat(reachStr);
+        if (isNaN(reachFact)) reachFact = null;
       }
-      
-      parsedPoints.push({ day: interval, fact: reachFact });
+      parsedReachPoints.push({ day: interval, fact: reachFact });
     }
   }
   
-  parsedPoints.sort((a,b) => a.day - b.day);
+  parsedReachPoints.sort((a, b) => a.day - b.day);
   
-  let finalTrajectoryArr = [];
-  let lastKnownTrajectory = 0;
-  let currentActualRate = 0;
+  // 4. Construct trajectory run path model up to Day 28 bound limit arrays
+  let finalReachTrajectoryArr = [];
+  let lastKnownReachTrajectory = 0;
+  let currentActualReachRate = 0;
   
-  for(let day = 1; day <= 28; day++) {
-    let match = parsedPoints.find(p => p.day === day);
+  for (let day = 1; day <= 28; day++) {
+    let match = parsedReachPoints.find(p => p.day === day);
     let factVal = (match && match.fact !== null) ? match.fact : null;
     let computedTrajectory = 0;
     
     if (factVal !== null) {
       computedTrajectory = factVal;
-      currentActualRate = factVal; 
+      currentActualReachRate = factVal;
     } else {
       let remainingDays = 28 - (day - 1);
       if (remainingDays <= 0) remainingDays = 1;
-      computedTrajectory = lastKnownTrajectory + ((target28D - lastKnownTrajectory) / remainingDays);
+      computedTrajectory = lastKnownReachTrajectory + ((target28D - lastKnownReachTrajectory) / remainingDays);
     }
     
-    lastKnownTrajectory = computedTrajectory;
-    finalTrajectoryArr.push({
+    lastKnownReachTrajectory = computedTrajectory;
+    finalReachTrajectoryArr.push({
       day: day,
       trajectoryValue: computedTrajectory,
       isFact: (factVal !== null)
     });
   }
   
-  let daysElapsed = finalTrajectoryArr.filter(p => p.isFact).length;
+  let daysElapsed = finalReachTrajectoryArr.filter(p => p.isFact).length;
   let remainingTime = 28 - daysElapsed;
-  let targetShortfall = target28D - currentActualRate;
+  let targetShortfall = target28D - currentActualReachRate;
   let neededDailyUplift = remainingTime > 0 ? (targetShortfall / remainingTime) : 0;
   
   let currentVelocity = 0;
-  if(daysElapsed > 1) {
-     currentVelocity = currentActualRate / daysElapsed;
+  if (daysElapsed > 1) {
+     currentVelocity = currentActualReachRate / daysElapsed;
   }
   
   let statusComment = "On Target";
-  if(currentVelocity < (target28D / 28) && targetShortfall > 0) {
+  if (currentVelocity < (target28D / 28) && targetShortfall > 0) {
     statusComment = "Below Target";
-  }
-
-  const hrsSheet = ss.getSheetByName('Daily Hrs (Raw)');
-  const hrsData = hrsSheet.getDataRange().getDisplayValues();
-  const hrsHeaders = hrsData[0];
-
-  const hbIdx = hrsHeaders.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
-  const heIdx = hrsHeaders.indexOf('DAY_INTERVAL');
-  const hfIdx = hrsHeaders.indexOf('TOTAL_HRS_ITD');
-
-  let parsedHrsPoints = [];
-  for (let i = 1; i < hrsData.length; i++) {
-    if (hrsData[i][hbIdx] === selectedTitle) {
-      let interval = parseInt(hrsData[i][heIdx]) || 0;
-      let hrsStr = hrsData[i][hfIdx].toString().trim().replace(/,/g, '');
-      let hrsFact = null;
-      if (hrsStr !== "" && hrsStr !== "-") {
-        hrsFact = parseFloat(hrsStr);
-        if (isNaN(hrsFact)) hrsFact = null;
-      }
-      parsedHrsPoints.push({ day: interval, fact: hrsFact });
-    }
-  }
-
-  parsedHrsPoints.sort((a, b) => a.day - b.day);
-
-  let finalHrsTrajectoryArr = [];
-  let lastKnownHrsTrajectory = 0;
-  let currentActualHrsRate = 0;
-
-  for (let day = 1; day <= 28; day++) {
-    let match = parsedHrsPoints.find(p => p.day === day);
-    let factVal = (match && match.fact !== null) ? match.fact : null;
-    let computedTrajectory = 0;
-
-    if (factVal !== null) {
-      computedTrajectory = factVal;
-      currentActualHrsRate = factVal;
-    } else {
-      let remainingDays = 28 - (day - 1);
-      if (remainingDays <= 0) remainingDays = 1;
-      computedTrajectory = lastKnownHrsTrajectory + ((targetHrs28D - lastKnownHrsTrajectory) / remainingDays);
-    }
-
-    lastKnownHrsTrajectory = computedTrajectory;
-    finalHrsTrajectoryArr.push({
-      day: day,
-      trajectoryValue: computedTrajectory,
-      isFact: (factVal !== null)
-    });
   }
   
   return {
@@ -502,73 +474,10 @@ function getTitleTrajectoryData(selectedTitle) {
     target7D: target7D,
     target28D: target28D,
     daysElapsed: daysElapsed,
-    currentRate: currentActualRate,
+    currentReachRate: currentActualReachRate,
     neededDailyRate: neededDailyUplift,
     status: statusComment,
-    chartData: finalTrajectoryArr,
-    targetHrs7D: targetHrs7D,
-    targetHrs28D: targetHrs28D,
-    currentHrsRate: currentActualHrsRate,
-    chartHrsData: finalHrsTrajectoryArr
+    chartReachData: finalReachTrajectoryArr
   };
 }
 
-function getAllUniqueBatchTitlesList() {
-  const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('Pivot Current');
-  const data = sheet.getDataRange().getDisplayValues();
-  let titles = [];
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0] !== "Grand Total" && data[i][0] !== "Row Labels") titles.push(data[i][0]);
-  }
-  return titles;
-}
-
-// ===== STREAMLINED BACKEND COMPETITIVE EVOLUTION MODEL ENGINE =====
-function getStreamlinedDailyEvolutionData(primaryTitle, benchmarkTitlesList, metricKey) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sheet = ss.getSheetByName('Daily Merch');
-  if (!sheet) return { timeline: {}, daysOnPlatform: {} };
-
-  const data = sheet.getDataRange().getDisplayValues();
-  if (data.length <= 1) return { timeline: {}, daysOnPlatform: {} };
-
-  const headers = data[0];
-  const titleIdx = headers.indexOf('CONTENT_TITLE_WITH_SEASON_NUMBER');
-  const launchDayIdx = headers.indexOf('DAYS_SINCE_LAUNCH');
-  const platformDaysIdx = headers.indexOf('DAYS_ON_PLATFORM');
-  
-  let targetCol = headers.indexOf('TOTAL_IMPRESSIONS');
-  if (metricKey === 'plays') targetCol = headers.indexOf('TOTAL_PLAYS');
-  if (metricKey === 'clicks') targetCol = headers.indexOf('TOTAL_CLICKS');
-
-  let activeTitles = [primaryTitle];
-  if (benchmarkTitlesList && benchmarkTitlesList.length > 0) {
-    activeTitles = activeTitles.concat(benchmarkTitlesList);
-  }
-
-  let timelineMatrix = {}; // day -> title -> metricVolume
-  let titleMaxDaysOnPlatform = {};
-
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const tName = row[titleIdx];
-    if (!activeTitles.includes(tName)) continue;
-
-    const day = parseInt(row[launchDayIdx]) || 0;
-    if (day <= 0) continue; // Filter out zero and negative launch tracking constraints
-
-    const vol = parseFloat(row[targetCol].replace(/[^0-9.]/g, '')) || 0;
-    if (row[platformDaysIdx]) titleMaxDaysOnPlatform[tName] = row[platformDaysIdx];
-
-    if (!timelineMatrix[day]) {
-      timelineMatrix[day] = {};
-    }
-    timelineMatrix[day][tName] = (timelineMatrix[day][tName] || 0) + vol;
-  }
-
-  return {
-    timeline: timelineMatrix,
-    activeTitles: activeTitles,
-    daysOnPlatform: titleMaxDaysOnPlatform
-  };
-}
