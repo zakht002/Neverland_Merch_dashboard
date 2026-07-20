@@ -27,7 +27,7 @@
     .tab-content.active { display: block; }
     
     .dashboard-card { background: var(--bg-card); padding: 25px; border-radius: 12px; margin-bottom: 25px; border: 1px solid var(--teal-brand); position: relative; }
-    .chart-container { height: 380px; width: 100%; position: relative; margin-top: 15px; }
+    .chart-container { height: 440px; width: 100%; position: relative; margin-top: 15px; }
     
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th { color: var(--aurora); text-align: left; padding: 12px; font-size: 12px; text-transform: uppercase; }
@@ -52,6 +52,11 @@
     
     .comparison-select-panel { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: rgba(255,255,255,0.03); padding: 10px 15px; border-radius: 6px; border: 1px solid rgba(19,78,94,0.4); }
     .comparison-select-panel select { background: var(--bg-main); color: #fff; border: 1px solid var(--aurora); padding: 4px 8px; border-radius: 4px; outline: none; }
+    
+    .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .kpi-card { background: rgba(19, 78, 94, 0.15); padding: 12px; border-radius: 6px; border: 1px solid rgba(0, 229, 255, 0.2); text-align: center; }
+    .kpi-value { font-size: 16px; font-weight: bold; color: var(--aurora); margin-top: 4px; }
+    .kpi-label { font-size: 11px; color: #ccc; }
   </style>
 </head>
 <body>
@@ -61,7 +66,7 @@
   <div class="tabs">
     <button class="tab-button active" onclick="showTab('main', this)">CURRENT BATCH</button>
     <button class="tab-button" onclick="showTab('breakout', this)">CATEGORIES</button>
-    <button id="nav-tab-title" class="tab-button disabled-tab" onclick="showTab('title', this)">TITLE</button>
+    <button id="nav-tab-title" class="tab-button disabled-tab" onclick="showTab('title', this)">MERCHANDISING</button>
     <button class="tab-button" onclick="showTab('itvx-performance', this)">ITVX ALL TITLES PERFORMANCE</button>
   </div>
 
@@ -153,7 +158,12 @@
     </div>
 
     <div id="title-merchandising-subtab" class="sub-tab-content active">
+      <!-- Executive Summary Segment Block -->
+      <div id="executive-summary-headline-card" class="analysis-box" style="font-size:15px; font-weight:600; color:var(--aurora);">Loading analysis insights...</div>
       <div id="merch-trends-narrative-summary" class="analysis-box">Compiling baseline observed trend summary...</div>
+      
+      <!-- Additional Auto-Generated KPIs UI Frame -->
+      <div class="kpi-container" id="merch-kpi-grid"></div>
       
       <div class="comparison-select-panel">
         <label for="comparison-title-dropdown">Cross-Title Selection Menu (Optional Comparison):</label>
@@ -164,39 +174,59 @@
 
       <div class="dashboard-card">
         <button class="download-btn" onclick="triggerMerchMetricsExtract('impressions')">Download Chart Data</button>
-        <h4>1. Impressions by Container (Top 10 Stacked Mix %)</h4>
+        <h4 id="label-chart-1">1. IMPRESSIONS by Container (Top 10 Stacked Mix %)</h4>
         <div class="chart-container"><canvas id="chart-merch-impressions-container"></canvas></div>
       </div>
       
       <div class="dashboard-card">
         <button class="download-btn" onclick="triggerMerchMetricsExtract('plays')">Download Chart Data</button>
-        <h4>2. Plays By Container (Top 10 Stacked Mix %)</h4>
+        <h4 id="label-chart-2">2. Plays By Container</h4>
         <div class="chart-container"><canvas id="chart-merch-plays-container"></canvas></div>
       </div>
 
       <div class="grid-2">
         <div class="dashboard-card">
           <button class="download-btn" onclick="triggerMerchMetricsExtract('curation-imp')">Download Chart Data</button>
-          <h4>3. Impressions Curation Mix (Editorial vs. Algorithmic)</h4>
+          <h4 id="label-chart-3">3. Impressions Curation Mix</h4>
           <div class="chart-container"><canvas id="chart-curation-mix-impressions"></canvas></div>
         </div>
         <div class="dashboard-card">
           <button class="download-btn" onclick="triggerMerchMetricsExtract('curation-plays')">Download Chart Data</button>
-          <h4>4. Plays Curation Mix</h4>
+          <h4 id="label-chart-4">4. Plays Curation Mix</h4>
           <div class="chart-container"><canvas id="chart-curation-mix-plays"></canvas></div>
         </div>
+      </div>
+      
+      <div class="dashboard-card">
+        <div class="comparison-select-panel" style="border:none; padding:0; background:transparent;">
+          <label style="font-weight:600;">Chart 5 Configuration Metric Mode Selector:</label>
+          <select id="chart5-metric-selector" onchange="toggleChart5Metric()" style="margin-left:10px;">
+            <option value="impressions">Impressions Metric</option>
+            <option value="plays">Plays Metric</option>
+          </select>
+        </div>
+        <h4 id="label-chart-5">5. Container Contribution Mix</h4>
+        <div class="chart-container"><canvas id="chart-container-contribution-mix-canvas"></canvas></div>
       </div>
 
       <div class="dashboard-card">
         <button class="download-btn" onclick="triggerMerchMetricsExtract('timeline-imp')">Download Chart Data</button>
-        <h4>5. Daily Sum of Impressions Across All Containers</h4>
+        <h4>6. Daily Impressions by Container (Stacked Column Map View)</h4>
         <div class="chart-container"><canvas id="chart-timeline-impressions-rolling"></canvas></div>
       </div>
       
       <div class="dashboard-card">
+        <div class="comparison-select-panel" style="border:none; padding:0; background:transparent;">
+          <label><input type="checkbox" id="toggle-normalize-decay-curves" onchange="refreshTimelineTrendsSubsystem()"> Normalize Decay Curves View to Day 1 = 100</label>
+        </div>
         <button class="download-btn" onclick="triggerMerchMetricsExtract('timeline-plays')">Download Chart Data</button>
-        <h4>6. Daily Sum of Plays Across All Containers</h4>
+        <h4>7. Daily Impressions Trend Comparison (Decay Matrix Mode)</h4>
         <div class="chart-container"><canvas id="chart-timeline-plays-rolling"></canvas></div>
+      </div>
+
+      <div class="dashboard-card">
+        <h4>8. Daily Plays Trend Comparison Curve Line Map</h4>
+        <div class="chart-container"><canvas id="chart-daily-plays-trend-comparison"></canvas></div>
       </div>
 
       <table id="title-table" style="display: none;"></table>
@@ -221,35 +251,39 @@
 
   <div id="itvx-performance" class="tab-content">
     <div class="sub-tabs">
-      <button class="sub-tab-button active" onclick="showSubTab('monthly-engagement-view', this)">Monthly Engagement</button>
-      <button class="sub-tab-button" onclick="showSubTab('clean-performance-view', this)">Overall Performance ITD</button>
+      <button class="sub-tab-button" onclick="showSubTab('monthly-engagement-view', this)">Monthly Engagement</button>
+      <button class="sub-tab-button active" onclick="showSubTab('clean-performance-view', this)">Overall Performance ITD</button>
     </div>
 
-    <div id="monthly-engagement-view" class="sub-tab-content active">
-      <div class="dashboard-card">
-        <button class="download-btn" onclick="downloadRawData('Monthly Reach','A1:F15','Monthly_ITVX_Historical_Reach_Data.csv')">Download Chart Data</button>
-        <h3>Monthly ITVX % Reach</h3>
-        <p style="font-size:12px; color:var(--grey); margin:-10px 0 15px 0;">Visualizes the dynamic monthly historical tracking distribution index</p>
-        <div class="chart-container"><canvas id="chart-monthly-reach-unified-bars"></canvas></div>
+    <div id="monthly-engagement-view" class="sub-tab-content">
+      <div class="grid-2">
+        <div class="dashboard-card">
+          <button class="download-btn" onclick="downloadRawData('Monthly Reach','A1:F15','Monthly_ITVX_Historical_Reach_Data.csv')">Download Chart Data</button>
+          <h3>Monthly ITVX % Reach</h3>
+          <p style="font-size:12px; color:var(--grey); margin:-10px 0 15px 0;">Visualizes the dynamic monthly historical tracking distribution index</p>
+          <div class="chart-container"><canvas id="chart-monthly-reach-unified-bars"></canvas></div>
+        </div>
+        <div class="dashboard-card">
+          <button class="download-btn" onclick="exportHtmlTableToCsv('clean-performance-table', 'Monthly_Hours_Performance.csv')">Download Chart Data</button>
+          <h3>Monthly ITVX Total Hours Performance</h3>
+          <p style="font-size:12px; color:var(--grey); margin:-10px 0 15px 0;">Visualizes the cumulative tracking distribution of streaming hours</p>
+          <div class="chart-container"><canvas id="chart-monthly-hours-unified-bars"></canvas></div>
+        </div>
       </div>
     </div>
 
-    <div id="clean-performance-view" class="sub-tab-content">
+    <div id="clean-performance-view" class="sub-tab-content active">
       <div class="dashboard-card">
         <div class="comparison-select-panel" style="margin-bottom:20px;">
           <label for="performance-sorting-metric-ddn">Order Top 20 Titles By Metric Criteria:</label>
           <select id="performance-sorting-metric-ddn" onchange="loadCleanPerformanceTableData()">
-            <option value="PERC_REACH_ITD">% Reach (Default Descending)</option>
-            <option value="TOTAL_HRS_ITD">Total Hours Streamed</option>
-            <option value="TOTAL_IMPRESSIONS">Total Impressions</option>
-            <option value="CTR">Click-Through Rate (CTR)</option>
-            <option value="ECTR">Effective Click-Through Rate (eCTR)</option>
-            <option value="Sunrise Date">Sunrise Launch Date</option>
-            <option value="Sunset Date">Sunset Expiry Date</option>
+            <option value="Total Hrs ITD">Total Hours Streamed (Default DESC)</option>
+            <option value="% Reach ITD">% Reach ITD</option>
+            <option value="Days on Platform">Days on Platform</option>
           </select>
         </div>
         <button class="download-btn" onclick="exportHtmlTableToCsv('clean-performance-table', 'Past_Performance_ITD.csv')">Download Table Data</button>
-        <h3>Clean Performance ITD (Top 20 Ordered Output Matrix)</h3>
+        <h3>Clean Performance ITD (Top 20 Ordered Output Matrix from All Past Performance)</h3>
         <div style="overflow-x:auto;"><table id="clean-performance-table"></table></div>
       </div>
     </div>
@@ -261,6 +295,7 @@
     let isTitleUnlocked = false; 
     let activePrimarySelectedTitle = "";
     let localCacheMerchDatasetPrimary = null;
+    let localCacheMerchDatasetComparison = null;
     let localCacheTrajectoryDataPayload = null;
 
     window.onload = function() {
@@ -335,64 +370,64 @@
 
     function compileCategoryDashboardComboCharts(categoryName, rTableId, hTableId, rCanvasId, hCanvasId) {
       google.script.run.withSuccessHandler(d => {
-         renderUnifiedDataGrid(d.reach, rTableId, true);
-         renderUnifiedDataGrid(d.hours, hTableId, false);
+          renderUnifiedDataGrid(d.reach, rTableId, true);
+          renderUnifiedDataGrid(d.hours, hTableId, false);
 
-         const rTitles = d.reach.rows.map(r => r[0]);
-         const r7Fact = d.reach.rows.map(r => r[1]);
-         const r28Fact = d.reach.rows.map(r => r[2]);
-         const r7Goal = d.reach.rows.map(r => r[3]);
-         const r28Goal = d.reach.rows.map(r => r[4]);
-         const rMax = d.reach.rows.map(r => r[5]);
-         const pctFmt = (v) => (v * 100).toFixed(2) + '%';
+          const rTitles = d.reach.rows.map(r => r[0]);
+          const r7Fact = d.reach.rows.map(r => r[1]);
+          const r28Fact = d.reach.rows.map(r => r[2]);
+          const r7Goal = d.reach.rows.map(r => r[3]);
+          const r28Goal = d.reach.rows.map(r => r[4]);
+          const rMax = d.reach.rows.map(r => r[5]);
+          const pctFmt = (v) => (v * 100).toFixed(2) + '%';
 
-         if(instancesOfCharts[rCanvasId]) instancesOfCharts[rCanvasId].destroy();
-         instancesOfCharts[rCanvasId] = new Chart(document.getElementById(rCanvasId).getContext('2d'), {
-           plugins: [ChartDataLabels],
-           data: {
-             labels: rTitles,
-             datasets: [
-               { type: 'bar', label: '7D Fact', data: r7Fact, backgroundColor: '#00d2ff' },
-               { type: 'bar', label: '28D Fact', data: r28Fact, backgroundColor: '#134e5e' },
-               { type: 'bar', label: 'Current % reach', data: rMax, backgroundColor: '#808080' },
-               { type: 'line', label: '7D Target Threshold', data: r7Goal, borderColor: '#ff7675', borderDash: [4,4], pointRadius: 0, fill: false },
-               { type: 'line', label: '28D Target Threshold', data: r28Goal, borderColor: '#1dd1a1', borderDash: [2,2], pointRadius: 0, fill: false }
-             ]
-           },
-           options: {
-             responsive: true, maintainAspectRatio: false,
-             plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', formatter: pctFmt, align: 'top' } },
-             scales: { y: { ticks: { color: '#fff', callback: pctFmt } }, x: { ticks: { color: '#fff' } } }
-           }
-         });
+          if(instancesOfCharts[rCanvasId]) instancesOfCharts[rCanvasId].destroy();
+          instancesOfCharts[rCanvasId] = new Chart(document.getElementById(rCanvasId).getContext('2d'), {
+            plugins: [ChartDataLabels],
+            data: {
+              labels: rTitles,
+              datasets: [
+                { type: 'bar', label: '7D Fact', data: r7Fact, backgroundColor: '#00d2ff' },
+                { type: 'bar', label: '28D Fact', data: r28Fact, backgroundColor: '#134e5e' },
+                { type: 'bar', label: 'Current % reach', data: rMax, backgroundColor: '#808080' },
+                { type: 'line', label: '7D Target Threshold', data: r7Goal, borderColor: '#ff7675', borderDash: [4,4], pointRadius: 0, fill: false },
+                { type: 'line', label: '28D Target Threshold', data: r28Goal, borderColor: '#1dd1a1', borderDash: [2,2], pointRadius: 0, fill: false }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', formatter: pctFmt, align: 'top' } },
+              scales: { y: { ticks: { color: '#fff', callback: pctFmt } }, x: { ticks: { color: '#fff' } } }
+            }
+          });
 
-         const hTitles = d.hours.rows.map(r => r[0]);
-         const h7Fact = d.hours.rows.map(r => r[1]);
-         const h28Fact = d.hours.rows.map(r => r[2]);
-         const h7Goal = d.hours.rows.map(r => r[3]);
-         const h28Goal = d.hours.rows.map(r => r[4]);
-         const hMax = d.hours.rows.map(r => r[5]);
-         const hrsFmt = (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v;
+          const hTitles = d.hours.rows.map(r => r[0]);
+          const h7Fact = d.hours.rows.map(r => r[1]);
+          const h28Fact = d.hours.rows.map(r => r[2]);
+          const h7Goal = d.hours.rows.map(r => r[3]);
+          const h28Goal = d.hours.rows.map(r => r[4]);
+          const hMax = d.hours.rows.map(r => r[5]);
+          const hrsFmt = (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v;
 
-         if(instancesOfCharts[hCanvasId]) instancesOfCharts[hCanvasId].destroy();
-         instancesOfCharts[hCanvasId] = new Chart(document.getElementById(hCanvasId).getContext('2d'), {
-           plugins: [ChartDataLabels],
-           data: {
-             labels: hTitles,
-             datasets: [
-               { type: 'bar', label: '7D Fact', data: h7Fact, backgroundColor: '#00e5ff' },
-               { type: 'bar', label: '28D Fact', data: h28Fact, backgroundColor: '#134e5e' },
-               { type: 'bar', label: 'Current Hours', data: hMax, backgroundColor: '#808080' },
-               { type: 'line', label: '7D Goal Threshold', data: h7Goal, borderColor: '#feca57', borderDash: [4,4], pointRadius: 0, fill: false },
-               { type: 'line', label: '28D Goal Threshold', data: h28Goal, borderColor: '#ff6b6b', borderDash: [2,2], pointRadius: 0, fill: false }
-             ]
-           },
-           options: {
-             responsive: true, maintainAspectRatio: false,
-             plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', formatter: hrsFmt, align: 'top' } },
-             scales: { y: { ticks: { color: '#fff', callback: hrsFmt } }, x: { ticks: { color: '#fff' } } }
-           }
-         });
+          if(instancesOfCharts[hCanvasId]) instancesOfCharts[hCanvasId].destroy();
+          instancesOfCharts[hCanvasId] = new Chart(document.getElementById(hCanvasId).getContext('2d'), {
+            plugins: [ChartDataLabels],
+            data: {
+              labels: hTitles,
+              datasets: [
+                { type: 'bar', label: '7D Fact', data: h7Fact, backgroundColor: '#00e5ff' },
+                { type: 'bar', label: '28D Fact', data: h28Fact, backgroundColor: '#134e5e' },
+                { type: 'bar', label: 'Current Hours', data: hMax, backgroundColor: '#808080' },
+                { type: 'line', label: '7D Goal Threshold', data: h7Goal, borderColor: '#feca57', borderDash: [4,4], pointRadius: 0, fill: false },
+                { type: 'line', label: '28D Goal Threshold', data: h28Goal, borderColor: '#ff6b6b', borderDash: [2,2], pointRadius: 0, fill: false }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { color: '#fff' } }, datalabels: { color: '#fff', formatter: hrsFmt, align: 'top' } },
+              scales: { y: { ticks: { color: '#fff', callback: hrsFmt } }, x: { ticks: { color: '#fff' } } }
+            }
+          });
       }).generateLiveCategorySummaryModel(categoryName);
     }
 
@@ -451,14 +486,16 @@
     }
 
     function loadTitleTab(title) { 
-      activePrimarySelectedTitle = title; 
-      isTitleUnlocked = true; 
-      document.getElementById('comparison-title-dropdown').value = ""; 
-      const navBtn = document.getElementById('nav-tab-title'); 
-      navBtn.classList.remove('disabled-tab'); 
-      showTab('title', navBtn); 
-
+      // Capture plain title name and fetch structural profiles matching concatenation template parameters
       google.script.run.withSuccessHandler(p => { 
+        // Build uniform identity name pattern string format: Content (Days d)
+        activePrimarySelectedTitle = p.name + " (" + p.daysOnPlatform + "d)";
+        isTitleUnlocked = true; 
+        document.getElementById('comparison-title-dropdown').value = ""; 
+        const navBtn = document.getElementById('nav-tab-title'); 
+        navBtn.classList.remove('disabled-tab'); 
+        showTab('title', navBtn); 
+
         document.getElementById('strip-title-name').textContent = p.name; 
         document.getElementById('strip-title-cat').textContent = p.category; 
         document.getElementById('strip-title-days').textContent = p.daysOnPlatform; 
@@ -471,33 +508,98 @@
         } else { 
           imgFrame.style.display = "none"; 
         } 
-      }).getHeaderMetadataProfile(title); 
 
-      google.script.run.withSuccessHandler(primaryData => { 
-        localCacheMerchDatasetPrimary = primaryData; 
-        compileMerchChartsSubsystem(primaryData, null); 
-      }).getAdvancedMerchPivotData(title); 
+        // Execute advanced structural matrix updates
+        google.script.run.withSuccessHandler(primaryData => { 
+          localCacheMerchDatasetPrimary = primaryData; 
+          localCacheMerchDatasetComparison = null;
+          compileMerchChartsSubsystem(primaryData, null); 
+        }).getAdvancedMerchPivotData(p.name); 
 
-      renderTrajectoryEngineCharts(title); 
+        renderTrajectoryEngineCharts(p.name); 
+      }).getHeaderMetadataProfile(title);
     }
 
     function evaluateSecondaryComparisonStream() { 
       const compTitle = document.getElementById('comparison-title-dropdown').value; 
       if (!compTitle) { 
+        localCacheMerchDatasetComparison = null;
         compileMerchChartsSubsystem(localCacheMerchDatasetPrimary, null); 
         return; 
       } 
       google.script.run.withSuccessHandler(compData => { 
+        localCacheMerchDatasetComparison = compData;
         compileMerchChartsSubsystem(localCacheMerchDatasetPrimary, compData); 
       }).getAdvancedMerchPivotData(compTitle); 
     }
 
     function compileMerchChartsSubsystem(primary, comparison) { 
       const pTitle = activePrimarySelectedTitle; 
-      const cTitle = comparison ? document.getElementById('comparison-title-dropdown').value : ""; 
-      let dailyAvgHrsPlaceholder = 3.5; 
-      document.getElementById('merch-trends-narrative-summary').innerHTML = `<strong>${pTitle}</strong> title is behind D28 % reach goal, to hit target it needs to add +0.17ppts reach on D27-28 (with current rate of +0.01 ppts). <br/>But it is on the trajectory to exceed 28D hours target if it maintains current volume of ~<strong>${dailyAvgHrsPlaceholder}k</strong> hrs streamed daily.`; 
+      const rawCompVal = comparison ? document.getElementById('comparison-title-dropdown').value : ""; 
+      // Construct comparative formatted subtitle tags dynamically
+      const cTitle = comparison ? rawCompVal + " (Comp)" : "";
+
+      // Dynamic header mapping matching reporting guidelines
+      document.getElementById('label-chart-1').textContent = pTitle + " - IMPRESSIONS by Container";
+      document.getElementById('label-chart-2').textContent = pTitle + " - Plays By Container";
+      document.getElementById('label-chart-3').textContent = pTitle + " - Impressions Curation Mix";
+      document.getElementById('label-chart-4').textContent = pTitle + " - Plays Curation Mix";
+
+      // ----------------------------------------------------
+      // AUTOMATIC EXEC SUMMARY & ADDITIONAL KPI CALCULATION
+      // ----------------------------------------------------
+      let totalPImps = Object.values(primary.impressionsByContainer || {}).reduce((a,b)=>a+b, 0) || 0;
+      let totalPPlays = Object.values(primary.playsByContainer || {}).reduce((a,b)=>a+b, 0) || 0;
+      let convRate = totalPImps > 0 ? ((totalPPlays / totalPImps) * 100).toFixed(2) + "%" : "0.00%";
       
+      let pEdControlledImps = primary.curationImpressions["1. Editorially Controlled"] || 0;
+      let pEdInfluencedImps = primary.curationImpressions["2. Editorially Influenced"] || 0;
+      let pAlgoImps = primary.curationImpressions["3. Algorithmic"] || 0;
+      
+      let shareEdControlled = totalPImps > 0 ? ((pEdControlledImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
+      let shareEdInfluenced = totalPImps > 0 ? ((pEdInfluencedImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
+      let shareAlgoImps = totalPImps > 0 ? ((pAlgoImps / totalPImps) * 100).toFixed(0) + "%" : "0%";
+      
+      let algoPlays = primary.curationPlays["3. Algorithmic"] || 0;
+      let shareAlgoPlays = totalPPlays > 0 ? ((algoPlays / totalPPlays) * 100).toFixed(0) + "%" : "0%";
+
+      // Sort Containers Descending based on primary title contribution
+      let sortedContainers = Object.keys(primary.impressionsByContainer || {}).sort((a,b) => primary.impressionsByContainer[b] - primary.impressionsByContainer[a]);
+      let topContainerName = sortedContainers[0] || "None";
+      let topContainerShare = totalPImps > 0 ? ((primary.impressionsByContainer[topContainerName] || 0) / totalPImps * 100).toFixed(0) + "%" : "0%";
+
+      let heroShare = totalPImps > 0 ? (((primary.impressionsByContainer["hero"] || primary.impressionsByContainer["Hero"] || 0) / totalPImps) * 100).toFixed(0) + "%" : "0%";
+      let newlyAddedShare = totalPPlays > 0 ? (((primary.playsByContainer["newly added"] || primary.playsByContainer["Newly Added"] || 0) / totalPPlays) * 100).toFixed(0) + "%" : "0%";
+      let continueWatchShare = totalPPlays > 0 ? (((primary.playsByContainer["continue watching"] || primary.playsByContainer["Continue Watching"] || 0) / totalPPlays) * 100).toFixed(0) + "%" : "0%";
+
+      // Render Dashboard KPIs Grid Layout Frame
+      document.getElementById('merch-kpi-grid').innerHTML = `
+        <div class="kpi-card"><div class="kpi-label">Total Impressions</div><div class="kpi-value">${totalPImps.toLocaleString()}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Plays</div><div class="kpi-value">${totalPPlays.toLocaleString()}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Play Conversion Rate</div><div class="kpi-value">${convRate}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Editorially Controlled Share</div><div class="kpi-value">${shareEdControlled}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Editorially Influenced Share</div><div class="kpi-value">${shareEdInfluenced}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Algorithmic Play Share</div><div class="kpi-value">${shareAlgoPlays}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Top Container Placements</div><div class="kpi-value" style="font-size:12px;">${topContainerName} (${topContainerShare})</div></div>
+      `;
+
+      // Build Headlines Dynamically matching highest share observations
+      let highestNonAlgoVal = Math.max(pEdControlledImps, pEdInfluencedImps);
+      let headlineText = "";
+      if (highestNonAlgoVal === pEdInfluencedImps && totalPImps > 0) {
+        headlineText = pTitle.split(" (")[0] + " receives " + shareEdInfluenced + " of impressions from Editorially Influenced placements.";
+      } else {
+        headlineText = pTitle.split(" (")[0] + " receives " + shareEdControlled + " of impressions from Editorially Controlled placements.";
+      }
+      document.getElementById('executive-summary-headline-card').innerHTML = `<h3>${headlineText}</h3>`;
+
+      document.getElementById('merch-trends-narrative-summary').innerHTML = `
+        * ${pTitle.split(" (")[0]} receives ${shareEdInfluenced} of impressions from Editorially Influenced placements.<br/>
+        * ${shareAlgoPlays} of plays are generated through Algorithmic discovery.<br/>
+        * Hero contributes ${heroShare} of impressions while Newly Added contributes ${newlyAddedShare} of plays.<br/>
+        * Continue Watching is tracking at ${continueWatchShare} share contribution, operating as a core conversion engine.
+      `;
+
       function getTopContainersUnion(pObj, cObj) { 
         let keys = new Set(); 
         Object.keys(pObj || {}).forEach(k => keys.add(k)); 
@@ -510,62 +612,256 @@
         unionList.sort((a, b) => b.maxVal - a.maxVal); 
         return unionList.slice(0, 10); 
       } 
-      
+
+      // Denominator total configurations setup
+      let totalCImps = Object.values((comparison && comparison.impressionsByContainer) || {}).reduce((a,b)=>a+b, 0) || 1;
+      let totalCPlays = Object.values((comparison && comparison.playsByContainer) || {}).reduce((a,b)=>a+b, 0) || 1;
+
+      // Chart 1: IMPRESSIONS by Container Clustered Percentage Distribution Map
       const top10ImpsUnion = getTopContainersUnion(primary.impressionsByContainer, comparison ? comparison.impressionsByContainer : null); 
-      const labelsChart1 = top10ImpsUnion.map(x => x.name); 
-      renderStackedBar('chart-merch-impressions-container', labelsChart1, top10ImpsUnion.map(x => x.pVal), top10ImpsUnion.map(x => x.cVal), pTitle, cTitle); 
+      renderHorizontalPercentageBars('chart-merch-impressions-container', top10ImpsUnion.map(x => x.name), top10ImpsUnion.map(x => (x.pVal / (totalPImps || 1)) * 100), top10ImpsUnion.map(x => (x.cVal / totalCImps) * 100), pTitle, cTitle); 
       
+      // Chart 2: Plays By Container Clustered Percentage Distribution Map
       const top10PlaysUnion = getTopContainersUnion(primary.playsByContainer, comparison ? comparison.playsByContainer : null); 
-      const labelsChart2 = top10PlaysUnion.map(x => x.name); 
-      renderStackedBar('chart-merch-plays-container', labelsChart2, top10PlaysUnion.map(x => x.pVal), top10PlaysUnion.map(x => x.cVal), pTitle, cTitle); 
+      renderHorizontalPercentageBars('chart-merch-plays-container', top10PlaysUnion.map(x => x.name), top10PlaysUnion.map(x => (x.pVal / (totalPPlays || 1)) * 100), top10PlaysUnion.map(x => (x.cVal / totalCPlays) * 100), pTitle, cTitle); 
       
-      let curationImpsUnionKeys = Array.from(new Set([...Object.keys(primary.curationImpressions), ...Object.keys(comparison ? comparison.curationImpressions : {})])); 
-      renderCurationMixBar('chart-curation-mix-impressions', curationImpsUnionKeys, primary.curationImpressions, comparison ? comparison.curationImpressions : null, pTitle, cTitle); 
+      // Chart 3 & 4: Curation Mix Framework ordered strictly by reporting standards
+      const behaviorsOrder = ["1. Editorially Controlled", "2. Editorially Influenced", "3. Algorithmic"];
       
-      let curationPlaysUnionKeys = Array.from(new Set([...Object.keys(primary.curationPlays), ...Object.keys(comparison ? comparison.curationPlays : {})])); 
-      renderCurationMixBar('chart-curation-mix-plays', curationPlaysUnionKeys, primary.curationPlays, comparison ? comparison.curationPlays : null, pTitle, cTitle); 
-      
-      let timelineKeysUnion = Array.from(new Set([...Object.keys(primary.timelineImpressions), ...Object.keys(comparison ? comparison.timelineImpressions : {})])).sort(); 
-      renderTimelineLineChart('chart-timeline-impressions-rolling', timelineKeysUnion, primary.timelineImpressions, comparison ? comparison.timelineImpressions : null, pTitle, cTitle, '#008080'); 
-      renderTimelineLineChart('chart-timeline-plays-rolling', timelineKeysUnion, primary.timelinePlays, comparison ? comparison.timelinePlays : null, pTitle, cTitle, '#1dd1a1'); 
+      let primaryImpShares = behaviorsOrder.map(b => ((primary.curationImpressions[b] || 0) / (totalPImps || 1)) * 100);
+      let compImpShares = behaviorsOrder.map(b => comparison ? (((comparison.curationImpressions[b] || 0) / totalCImps) * 100) : 0);
+      renderHorizontalPercentageBars('chart-curation-mix-impressions', behaviorsOrder, primaryImpShares, compImpShares, pTitle, cTitle);
+
+      let primaryPlayShares = behaviorsOrder.map(b => ((primary.curationPlays[b] || 0) / (totalPPlays || 1)) * 100);
+      let compPlayShares = behaviorsOrder.map(b => comparison ? (((comparison.curationPlays[b] || 0) / totalCPlays) * 100) : 0);
+      renderHorizontalPercentageBars('chart-curation-mix-plays', behaviorsOrder, primaryPlayShares, compPlayShares, pTitle, cTitle);
+
+      // Render Dynamic Interactive Chart 5 Frame Subsystem
+      toggleChart5Metric();
+
+      // Refresh daily timelines
+      refreshTimelineTrendsSubsystem();
     }
 
-    function renderStackedBar(canvasId, labels, dataP, dataC, pTitle, cTitle) { 
-      if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy(); 
-      let normP = []; let normC = []; 
-      labels.forEach((l, i) => { 
-        let total = dataP[i] + (dataC[i] || 0); 
-        normP.push(total > 0 ? (dataP[i] / total * 100) : 0); 
-        normC.push(total > 0 ? ((dataC[i] || 0) / total * 100) : 0); 
-      }); 
-      let datasets = [{ label: pTitle, data: normP, backgroundColor: '#008080' }]; 
-      if (cTitle) datasets.push({ label: cTitle, data: normC, backgroundColor: '#00e5ff' }); 
-      instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), { 
-        plugins: [ChartDataLabels], 
-        type: 'bar', 
-        data: { labels: labels, datasets: datasets }, 
-        options: { 
-          responsive: true, maintainAspectRatio: false, 
-          scales: { x: { stacked: true, ticks: { color: '#fff' } }, y: { stacked: true, max: 100, ticks: { color: '#fff', callback: v=>v+'%' } } }, 
-          plugins: { legend: { labels: { color: '#fff' } }, datalabels: { formatter: v=>v>0 ? v.toFixed(0)+'%' : '', color: '#fff' } } 
-        } 
-      }); 
-    }
-
-    function renderCurationMixBar(canvasId, labels, primaryObj, comparisonObj, pTitle, cTitle) {
-      if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
-      let datasets = [{ label: pTitle, data: labels.map(l => primaryObj[l] || 0), backgroundColor: '#008080' }];
-      if (comparisonObj) {
-        datasets.push({ label: cTitle, data: labels.map(l => comparisonObj[l] || 0), backgroundColor: '#00e5ff' });
+    // ===== NEW INTERACTIVE FRAMEWORK ELEMENT: CHART 5 MATRIX SWITCHER =====
+    function toggleChart5Metric() {
+      if(!localCacheMerchDatasetPrimary) return;
+      const metric = document.getElementById('chart5-metric-selector').value;
+      const pTitle = activePrimarySelectedTitle;
+      const compTitle = localCacheMerchDatasetComparison ? document.getElementById('comparison-title-dropdown').value + " (Comp)" : "";
+      
+      let pObj = (metric === 'impressions') ? localCacheMerchDatasetPrimary.impressionsByContainer : localCacheMerchDatasetPrimary.playsByContainer;
+      let cObj = localCacheMerchDatasetComparison ? ((metric === 'impressions') ? localCacheMerchDatasetComparison.impressionsByContainer : localCacheMerchDatasetComparison.playsByContainer) : null;
+      
+      let totalP = Object.values(pObj || {}).reduce((a,b)=>a+b, 0) || 1;
+      let totalC = Object.values(cObj || {}).reduce((a,b)=>a+b, 0) || 1;
+      
+      // Calculate and slice the Top 10 descending list while grouping others under "Other"
+      let sortedKeys = Object.keys(pObj || {}).sort((a,b) => pObj[b] - pObj[a]);
+      let top10 = sortedKeys.slice(0, 10);
+      
+      let primaryData = top10.map(k => ((pObj[k] || 0) / totalP) * 100);
+      let compData = top10.map(k => cObj ? (((cObj[k] || 0) / totalC) * 100) : 0);
+      
+      let primaryOtherSum = 0; sortedKeys.slice(10).forEach(k => primaryOtherSum += pObj[k] || 0);
+      let compOtherSum = 0; if(cObj) { Object.keys(cObj).forEach(k => { if(!top10.includes(k)) compOtherSum += cObj[k] || 0; }); }
+      
+      if (primaryOtherSum > 0 || compOtherSum > 0) {
+        top10.push("Other");
+        primaryData.push((primaryOtherSum / totalP) * 100);
+        compData.push((compOtherSum / totalC) * 100);
       }
+      
+      // Automatically generate a matching chart headline
+      let topContainerName = top10[0] || "Hero";
+      let topSharePct = primaryData[0] ? primaryData[0].toFixed(0) + "%" : "0%";
+      document.getElementById('label-chart-5').textContent = pTitle.split(" (")[0] + " gets " + topSharePct + " of total " + metric + " from '" + topContainerName.toLowerCase() + "'";
+
+      renderHorizontalPercentageBars('chart-container-contribution-mix-canvas', top10, primaryData, compData, pTitle, compTitle);
+    }
+
+    function refreshTimelineTrendsSubsystem() {
+      const pTitle = activePrimarySelectedTitle;
+      const compTitle = localCacheMerchDatasetComparison ? document.getElementById('comparison-title-dropdown').value : "";
+      
+      google.script.run.withSuccessHandler(dailyData => {
+        const daysUnion = Array.from(new Set([...Object.keys(dailyData.primary), ...Object.keys(dailyData.comparison)])).sort((a,b) => parseInt(a)-parseInt(b));
+        
+        // ----------------------------------------------------
+        // CHART 6: Daily Impressions Stacked Column Chart Map
+        // ----------------------------------------------------
+        const canvasImpId = 'chart-timeline-impressions-rolling';
+        if(instancesOfCharts[canvasImpId]) instancesOfCharts[canvasImpId].destroy();
+        
+        let containerTotals = {};
+        daysUnion.forEach(d => {
+          let dayData = dailyData.primary[d];
+          if(dayData && dayData.containers) {
+            Object.keys(dayData.containers).forEach(c => { containerTotals[c] = (containerTotals[c] || 0) + dayData.containers[c]; });
+          }
+        });
+        let topContainers = Object.keys(containerTotals).sort((a,b) => containerTotals[b] - containerTotals[a]).slice(0,10);
+        
+        let datasetsChart6 = topContainers.map(c => {
+          return { label: c, data: daysUnion.map(d => (dailyData.primary[d] && dailyData.primary[d].containers[c]) || 0), stacked: 'Stack0' };
+        });
+        
+        datasetsChart6.push({
+          label: 'Other',
+          data: daysUnion.map(d => {
+            let dayData = dailyData.primary[d]; if(!dayData) return 0;
+            let otherSum = 0; Object.keys(dayData.containers).forEach(c => { if(!topContainers.includes(c)) otherSum += dayData.containers[c]; });
+            return otherSum;
+          }),
+          stacked: 'Stack0'
+        });
+
+        instancesOfCharts[canvasImpId] = new Chart(document.getElementById(canvasImpId).getContext('2d'), {
+          type: 'bar',
+          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: datasetsChart6 },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { stacked: true, ticks: { color: '#fff' } }, y: { stacked: true, ticks: { color: '#fff' } } },
+            plugins: { 
+              legend: { labels: { color: '#fff' } }, 
+              datalabels: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    let dataset = context.dataset;
+                    let value = dataset.data[context.dataIndex] || 0;
+                    let totalOnDay = context.chart.data.datasets.reduce((sum, ds) => sum + (ds.data[context.dataIndex] || 0), 0) || 1;
+                    let share = ((value / totalOnDay) * 100).toFixed(1) + "%";
+                    return dataset.label + ": " + value.toLocaleString() + " (" + share + ")";
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        // ----------------------------------------------------
+        // CHART 7: Daily Impressions Trend Decay Comparison
+        // ----------------------------------------------------
+        const canvasTrendId = 'chart-timeline-plays-rolling';
+        if(instancesOfCharts[canvasTrendId]) instancesOfCharts[canvasTrendId].destroy();
+        
+        const isNormalized = document.getElementById('toggle-normalize-decay-curves').checked;
+        
+        let pDay1Raw = (dailyData.primary[daysUnion[0]] && dailyData.primary[daysUnion[0]].totalImpressions) || 1;
+        let cDay1Raw = (dailyData.comparison[daysUnion[0]] && dailyData.comparison[daysUnion[0]].totalImpressions) || 1;
+        if(pDay1Raw === 0) pDay1Raw = 1; if(cDay1Raw === 0) cDay1Raw = 1;
+
+        let trendDataset = [
+          {
+            label: pTitle,
+            data: daysUnion.map(d => {
+              let val = (dailyData.primary[d] && dailyData.primary[d].totalImpressions) || 0;
+              return isNormalized ? (val / pDay1Raw * 100) : val;
+            }),
+            borderColor: '#008080', fill: false
+          }
+        ];
+
+        if (compTitle) {
+          trendDataset.push({
+            label: compTitle + " (Comp)",
+            data: daysUnion.map(d => {
+              let val = (dailyData.comparison[d] && dailyData.comparison[d].totalImpressions) || 0;
+              return isNormalized ? (val / cDay1Raw * 100) : val;
+            }),
+            borderColor: '#00e5ff', fill: false
+          });
+        }
+
+        instancesOfCharts[canvasTrendId] = new Chart(document.getElementById(canvasTrendId).getContext('2d'), {
+          type: 'line',
+          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: trendDataset },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff', callback: v => isNormalized ? v.toFixed(0) + '%' : v.toLocaleString() } } },
+            plugins: { legend: { labels: { color: '#fff' } }, datalabels: { display: false } }
+          }
+        });
+
+        // ----------------------------------------------------
+        // CHART 8: Daily Plays Trend Comparison Curve
+        // ----------------------------------------------------
+        const canvasDailyPlaysId = 'chart-daily-plays-trend-comparison';
+        if(instancesOfCharts[canvasDailyPlaysId]) instancesOfCharts[canvasDailyPlaysId].destroy();
+        
+        let playsTrendDatasets = [
+          {
+            label: pTitle,
+            data: daysUnion.map(d => (dailyData.primary[d] && dailyData.primary[d].totalPlays) || 0),
+            borderColor: '#1dd1a1', fill: false
+          }
+        ];
+        
+        if (compTitle) {
+          playsTrendDatasets.push({
+            label: compTitle + " (Comp)",
+            data: daysUnion.map(d => (dailyData.comparison[d] && dailyData.comparison[d].totalPlays) || 0),
+            borderColor: '#ff7675', fill: false
+          });
+        }
+
+        instancesOfCharts[canvasDailyPlaysId] = new Chart(document.getElementById(canvasDailyPlaysId).getContext('2d'), {
+          type: 'line',
+          data: { labels: daysUnion.map(d => 'Day ' + d), datasets: playsTrendDatasets },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff' } } },
+            plugins: { legend: { labels: { color: '#fff' } }, datalabels: { display: false } }
+          }
+        });
+
+      }).getDailyMerchDataModel(pTitle.split(" (")[0], compTitle);
+    }
+
+    function renderHorizontalPercentageBars(canvasId, labels, dataP, dataC, pTitle, cTitle) {
+      if(instancesOfCharts[canvasId]) instancesOfCharts[canvasId].destroy();
+      
+      let datasets = [{
+        label: pTitle,
+        data: dataP,
+        backgroundColor: '#008080',
+        barThickness: 12,
+        maxBarThickness: 16
+      }];
+      
+      if (cTitle) {
+        datasets.push({
+          label: cTitle,
+          data: dataC,
+          backgroundColor: '#00e5ff',
+          barThickness: 12,
+          maxBarThickness: 16
+        });
+      }
+      
       instancesOfCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
         plugins: [ChartDataLabels],
         type: 'bar',
         data: { labels: labels, datasets: datasets },
         options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { ticks: { color: '#fff' } }, y: { ticks: { color: '#fff' } } },
-          plugins: { legend: { labels: { color: '#fff' } }, datalabels: { color: '#fff', formatter: v=>v.toLocaleString() } }
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { min: 0, max: 100, ticks: { color: '#fff', callback: v => v.toFixed(0) + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { ticks: { color: '#fff' }, grid: { display: false } }
+          },
+          plugins: {
+            legend: { position: 'top', labels: { color: '#fff' } },
+            datalabels: {
+              anchor: 'end',
+              align: 'right',
+              color: '#fff',
+              font: { size: 10, weight: '600' },
+              formatter: v => v > 0 ? v.toFixed(0) + '%' : '0%'
+            }
+          }
         }
       });
     }
@@ -587,7 +883,6 @@
       });
     }
 
-    // ===== AMENDED INTERFACE: TRAJECTORY CURVE BUILDER SYSTEMS =====
     function renderTrajectoryEngineCharts(title) {
       google.script.run.withSuccessHandler(d => {
         localCacheTrajectoryDataPayload = d;
@@ -608,12 +903,13 @@
         if(instancesOfCharts['chart-trajectory-reach']) { instancesOfCharts['chart-trajectory-reach'].destroy(); }
         instancesOfCharts['chart-trajectory-reach'] = new Chart(document.getElementById('chart-trajectory-reach').getContext('2d'), {
           plugins: [ChartDataLabels],
+          type: 'line',
           data: {
             labels: dayLabels,
             datasets: [
-              { type: 'line', label: 'Actual Trajectory Line', data: trajectoryCurveValues, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
-              { type: 'line', label: '7-Day Target Line', data: staticLine7D, borderColor: '#ff7675', borderDash: [5, 5], pointRadius: 0, fill: false },
-              { type: 'line', label: '28-Day Target Line', data: staticLine28D, borderColor: '#1dd1a1', borderDash: [5, 5], pointRadius: 0, fill: false }
+              { label: 'Actual Trajectory Line', data: trajectoryCurveValues, borderColor: '#00e5ff', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: '7-Day Target Line', data: staticLine7D, borderColor: '#ff7675', borderDash: [5, 5], pointRadius: 0, fill: false },
+              { label: '28-Day Target Line', data: staticLine28D, borderColor: '#1dd1a1', borderDash: [5, 5], pointRadius: 0, fill: false }
             ]
           },
           options: {
@@ -636,18 +932,19 @@
         const dayHrsLabels = d.chartHrsData.map(pt => 'Day ' + pt.day);
         const curveHrsValues = d.chartHrsData.map(pt => pt.trajectoryValue);
         const lineHrs7D = new Array(28).fill(d.targetHrs7D);
-        const lineHrs28D = new Array(28).fill(d.targetHrs28D);
+        const lineHrs28D = new Array(28).fill(d.target28D);
         const hrsFmt = (v) => v >= 1000 ? (v/1000).toFixed(0)+'k' : v;
 
         if(instancesOfCharts['chart-trajectory-hours-curve']) { instancesOfCharts['chart-trajectory-hours-curve'].destroy(); }
         instancesOfCharts['chart-trajectory-hours-curve'] = new Chart(document.getElementById('chart-trajectory-hours-curve').getContext('2d'), {
           plugins: [ChartDataLabels],
+          type: 'line',
           data: {
             labels: dayHrsLabels,
             datasets: [
-              { type: 'line', label: 'Hours Trajectory Curve', data: curveHrsValues, borderColor: '#1dd1a1', borderWidth: 3, pointRadius: 3, fill: false },
-              { type: 'line', label: '7-Day Target Goal Line', data: lineHrs7D, borderColor: '#feca57', borderDash: [5, 5], pointRadius: 0, fill: false },
-              { type: 'line', label: '28-Day Target Goal Line', data: lineHrs28D, borderColor: '#ff6b6b', borderDash: [5, 5], pointRadius: 0, fill: false }
+              { label: 'Hours Trajectory Curve', data: curveHrsValues, borderColor: '#1dd1a1', borderWidth: 3, pointRadius: 3, fill: false },
+              { label: '7-Day Target Goal Line', data: lineHrs7D, borderColor: '#feca57', borderDash: [5, 5], pointRadius: 0, fill: false },
+              { label: '28-Day Target Goal Line', data: lineHrs28D, borderColor: '#ff6b6b', borderDash: [5, 5], pointRadius: 0, fill: false }
             ]
           },
           options: {
@@ -696,17 +993,31 @@
             }
           }
         });
+
+        const canvasHrsId = 'chart-monthly-hours-unified-bars';
+        const hrsFmt = (v) => v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v.toLocaleString();
+        
+        if(instancesOfCharts[canvasHrsId]) instancesOfCharts[canvasHrsId].destroy();
+        instancesOfCharts[canvasHrsId] = new Chart(document.getElementById(canvasHrsId).getContext('2d'), {
+          plugins: [ChartDataLabels],
+          type: 'bar',
+          data: {
+            labels: d.hours.labels,
+            datasets: [{ label: 'Total Volume Streamed Hours', data: d.hours.values, backgroundColor: '#008080', borderColor: '#1dd1a1', borderWidth: 1 }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { ticks: { color: '#fff', callback: hrsFmt } }, x: { ticks: { color: '#fff' } } },
+            plugins: { legend: { labels: { color: '#fff' } }, datalabels: { color: '#fff', align: 'top', formatter: hrsFmt } }
+          }
+        });
       }).getMonthlyEngagementData();
     }
 
     function loadCleanPerformanceTableData() {
       const metricSelect = document.getElementById('performance-sorting-metric-ddn');
-      const sortKey = metricSelect ? metricSelect.value : 'PERC_REACH_ITD';
-      let order = 'DESC';
-      if(sortKey === 'Sunrise Date' || sortKey === 'Sunset Date') {
-         order = 'ASC';
-      }
-
+      const sortKey = metricSelect ? metricSelect.value : 'Total Hrs ITD';
+      
       google.script.run.withSuccessHandler(d => {
         if(!d || d.length === 0) return;
         const table = document.getElementById('clean-performance-table');
@@ -720,30 +1031,56 @@
           });
           table.appendChild(tr);
         });
-      }).getPastPerformanceData(sortKey, order);
+      }).getPastPerformanceData(sortKey, 'DESC');
     }
 
     function triggerMerchMetricsExtract(mode) {
       if(!localCacheMerchDatasetPrimary) return;
-      let csvContent = "data:text/csv;charset=utf-8,";
-      csvContent += "Metric Label / Parameter Key, Value Volume\n";
       
-      let sourceObj = {};
-      if(mode === 'impressions') sourceObj = localCacheMerchDatasetPrimary.impressionsByContainer;
-      if(mode === 'plays') sourceObj = localCacheMerchDatasetPrimary.playsByContainer;
-      if(mode === 'curation-imp') sourceObj = localCacheMerchDatasetPrimary.curationImpressions;
-      if(mode === 'curation-plays') sourceObj = localCacheMerchDatasetPrimary.curationPlays;
-      if(mode === 'timeline-imp') sourceObj = localCacheMerchDatasetPrimary.timelineImpressions;
-      if(mode === 'timeline-plays') sourceObj = localCacheMerchDatasetPrimary.timelinePlays;
+      let csvContent = "data:text/csv;charset=utf-8,";
+      csvContent += "Category Item,Primary Raw Volume,Primary Share %,Comparison Raw Volume,Comparison Share %\n";
+      
+      let primaryObj = {};
+      let comparisonObj = localCacheMerchDatasetComparison || {};
+      
+      if(mode === 'impressions') {
+        primaryObj = localCacheMerchDatasetPrimary.impressionsByContainer;
+        comparisonObj = comparisonObj.impressionsByContainer || {};
+      } else if(mode === 'plays') {
+        primaryObj = localCacheMerchDatasetPrimary.playsByContainer;
+        comparisonObj = comparisonObj.playsByContainer || {};
+      } else if(mode === 'curation-imp') {
+        primaryObj = localCacheMerchDatasetPrimary.curationImpressions;
+        comparisonObj = comparisonObj.curationImpressions || {};
+      } else if(mode === 'curation-plays') {
+        primaryObj = localCacheMerchDatasetPrimary.curationPlays;
+        comparisonObj = comparisonObj.curationPlays || {};
+      } else if(mode === 'timeline-imp') {
+        primaryObj = localCacheMerchDatasetPrimary.timelineImpressions;
+        comparisonObj = comparisonObj.timelineImpressions || {};
+      } else if(mode === 'timeline-plays') {
+        primaryObj = localCacheMerchDatasetPrimary.timelinePlays;
+        comparisonObj = comparisonObj.timelinePlays || {};
+      }
 
-      Object.keys(sourceObj).forEach(k => {
-        csvContent += `"${k}",${sourceObj[k]}\n`;
+      let totalP = Object.values(primaryObj).reduce((a,b) => a+b, 0) || 1;
+      let totalC = Object.values(comparisonObj).reduce((a,b) => a+b, 0) || 1;
+      
+      let unionKeys = Array.from(new Set([...Object.keys(primaryObj), ...Object.keys(comparisonObj)]));
+      
+      unionKeys.forEach(k => {
+        let rawP = primaryObj[k] || 0;
+        let shareP = ((rawP / totalP) * 100).toFixed(2) + "%";
+        let rawC = comparisonObj[k] || 0;
+        let shareC = ((rawC / totalC) * 100).toFixed(2) + "%";
+        
+        csvContent += `"${k.replace(/"/g, '""')}",${rawP},${shareP},${rawC},${shareC}\n`;
       });
       
       const encodeUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodeUri);
-      link.setAttribute("download", activePrimarySelectedTitle + "_" + mode + "_data.csv");
+      link.setAttribute("download", activePrimarySelectedTitle + "_" + mode + "_calculated_share_data.csv");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
